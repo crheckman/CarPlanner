@@ -95,7 +95,7 @@ void BulletCarModel::GenerateStaticHull( const struct aiScene *pAIScene, const s
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void BulletCarModel::Init(btCollisionShape* pCollisionShape, const btVector3 &dMin, const btVector3 &dMax, CarParameterMap &parameters, unsigned int numWorlds )
+void BulletCarModel::Init(btCollisionShape* pCollisionShape, const btVector3 &dMin, const btVector3 &dMax, std::map<int, double> &parameters, unsigned int numWorlds )
 {
     m_nNumWorlds = numWorlds;
     //initialize a number of worlds
@@ -114,7 +114,7 @@ void BulletCarModel::Init(btCollisionShape* pCollisionShape, const btVector3 &dM
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void BulletCarModel::Init(const struct aiScene *pAIScene, CarParameterMap &parameters, unsigned int numWorlds )
+void BulletCarModel::Init(const struct aiScene *pAIScene, std::map<int, double> &parameters, unsigned int numWorlds )
 {
     aiNode *pAINode = pAIScene->mRootNode;
 
@@ -641,7 +641,7 @@ btRigidBody*	BulletCarModel::_LocalCreateRigidBody(BulletWorldInstance *pWorld, 
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void BulletCarModel::_InitVehicle(BulletWorldInstance* pWorld, CarParameterMap& parameters)
+void BulletCarModel::_InitVehicle(BulletWorldInstance* pWorld, std::map<int, double>& parameters)
 {
     pWorld->m_Parameters = parameters;
 

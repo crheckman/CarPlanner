@@ -5,11 +5,11 @@
 #include <cmath>
 #include <Eigen/LU>
 #include <Eigen/Core>
+#include <CVars/CVar.h>
 #include <float.h>
 #include "RpgUtils.h"
 #include "CarPlannerCommon.h"
 #include "BulletCarModel.h"
-#include "CVars/CVar.h"
 #include <thread>
 #include <queue>
 

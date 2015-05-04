@@ -1,17 +1,7 @@
 #ifndef CARPARAMETERS_H
 #define CARPARAMETERS_H
 
-#include "CarPlannerCommon.h"
-
-//enum CarParameterOrder
-//{
-//    //eSteeringCoef,
-//    eWheelBase,
-//    //eAccelCoef,
-//    //eMass,
-//    eFrictionCoef,
-//    eControlDelay
-//};
+#include <CarPlanner/CarPlannerCommon.h>
 
 enum ControlTarget
 {
@@ -20,13 +10,10 @@ enum ControlTarget
 };
 
 
-
-
 /// Structure containing all parameters for a car
 class CarParameters
 {
 public:
-
 
     enum{
         //body options
@@ -84,54 +71,9 @@ public:
 
     static const char * const Names[];
 
-
     static bool LoadFromFile(const std::string sFile, std::map<int, double> &map);
     static void PrintAllParams(const std::map<int, double> &map);
     static bool SaveToFile(const std::string sFile, const std::map<int, double> &map);
 };
-
-class BulletCarModel;
-
-struct RegressionParameter
-{
-    RegressionParameter(std::map<int, double>& map, int nKey, BulletCarModel* pModel = NULL);
-    static bool AreEqual(const std::vector<RegressionParameter>& params1, const std::vector<RegressionParameter>& params2);
-    void UpdateValue(const double newVal);
-    double m_dVal;
-    int m_nKey;
-    std::string m_sName;
-    BulletCarModel* m_pModel;
-};
-
-inline std::ostream& operator<<( std::ostream& Stream, RegressionParameter& parameter )
-{
-    Stream << parameter.m_dVal;
-    return Stream;
-}
-
-inline std::istream& operator>>( std::istream& Stream, RegressionParameter& parameter )
-{
-    double val;
-    Stream >> val;
-    parameter.UpdateValue(val);
-    return Stream;
-}
-
-inline std::ostream& operator<<( std::ostream& Stream, const std::vector<RegressionParameter>& params )
-{
-    Stream << "[ ";
-
-    for( unsigned int ii = 0; ii < params.size(); ii++ ) {
-        Stream << params[ii].m_sName << ":";
-        Stream << params[ii].m_dVal;
-        Stream << ", ";
-    }
-
-    Stream << " ]";
-
-    return Stream;
-}
-
-
 
 #endif // CARPARAMETERS_H

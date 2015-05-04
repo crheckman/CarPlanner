@@ -12,12 +12,12 @@ const char * const CarParameters::Names[] = {"WheelBase", "Width", "Height", "Dy
                                              "Magic_B","Magic_C","Magic_E"};
 
 ////////////////////////////////////////////////////////////////
-bool CarParameters::SaveToFile(const std::string sFile,const CarParameterMap& map)
+bool CarParameters::SaveToFile(const std::string sFile, const std::map<int, double> &map)
 {
     dout("Writing parameter map to " << sFile << "-----------------");
     std::ofstream file;
     file.open(sFile);
-    for(const CarParameterPair& pair: map ){
+    for(const std::pair<int,double>& pair: map ){
         char cLine[256];
         sprintf(cLine,"%s,%.9f\n",Names[pair.first],pair.second);
         file.write(cLine,strlen(cLine));
@@ -27,7 +27,7 @@ bool CarParameters::SaveToFile(const std::string sFile,const CarParameterMap& ma
 }
 
 ////////////////////////////////////////////////////////////////
-bool CarParameters::LoadFromFile(const std::string sFile,CarParameterMap& map)
+bool CarParameters::LoadFromFile(const std::string sFile, std::map<int, double>& map)
 {
     dout("Reading parameter map from " << sFile << "-----------------");
     std::ifstream file;
@@ -74,13 +74,13 @@ bool CarParameters::LoadFromFile(const std::string sFile,CarParameterMap& map)
 void CarParameters::PrintAllParams(const CarParameterMap &map)
 {
     dout("Printing parameter map -----------------");
-    for(const CarParameterPair& pair: map ){
+    for(const std::pair<int, double>& pair: map ){
         dout(Names[pair.first] << ":" << pair.second);
     }
 }
 
 ////////////////////////////////////////////////////////////////
-RegressionParameter::RegressionParameter(CarParameterMap& map, int nKey, BulletCarModel* pModel/* = NULL*/):
+RegressionParameter::RegressionParameter(std::map<int, double>& map, int nKey, BulletCarModel* pModel/* = NULL*/):
     m_dVal(map[nKey]),
     m_nKey(nKey),
     m_sName(CarParameters::Names[nKey]),
