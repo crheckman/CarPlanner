@@ -1,7 +1,6 @@
-#ifndef BOUNDARYSOLVER_H
-#define BOUNDARYSOLVER_H
+#pragma once
 
-#include "CarPlannerCommon.h"
+#include <CarPlanner/utils/vector.h>
 
 /// A structure containing the 2D boundary value problem inputs and outputs. This is passed to the boundary solver
 /// class in order to obtain a valid control law, which is also written to this structure.
@@ -17,11 +16,6 @@ struct BoundaryProblem
     { }
 
     virtual ~BoundaryProblem() {}
-
-//    BoundaryProblem(const BoundaryProblem& problem) : m_dStartPose(problem.m_dStartPose),m_dGoalPose(problem.m_dGoalPose),
-//        m_dMaxCurvature(problem.m_dMaxCurvature), m_nDiscretization(problem.m_nDiscretization), m_vCurvatures(problem.m_vCurvatures),
-//        m_vPts(problem.m_vPts), m_dDistance(problem.m_dDistance)
-//    {}
 
     //inputs into the solver
     Eigen::Vector4d m_dStartPose;   //< Starting 2D pose for the boundary value solver, which is parametrized as [x,y,theta,curvature]'
@@ -46,7 +40,5 @@ public:
     /// Solves the 2D boundary problem with the given problem description struct
     virtual void Solve(BoundaryProblem* pProblem) = 0;
     /// Get the curvature at a particular distance along the curve
-    virtual double GetCurvature(const BoundaryProblem *pProblem, double dist) = 0;
+    virtual double curvature(const BoundaryProblem *pProblem, double dist) = 0;
 };
-
-#endif // BOUNDARYSOLVER_H

@@ -12,6 +12,8 @@
 #define POSE_DIM 5
 #define SERVO_RANGE 500.0
 
+typedef Sophus::SE3Group<double> SE3d;
+
 template <typename T> int sgn(T val) {
   return (T(0) < val) - (val < T(0));
 }
@@ -26,6 +28,7 @@ inline const Eigen::Vector3d GetBasisVector(Sophus::SO3d rot, int n){ return rot
 
 // Additions to the Eigen namespace for convenience.
 namespace Eigen {
+
 typedef Matrix<double,6,1> VectorPose3D;
 typedef Matrix<double,POSE_DIM,1> VectorPose; // defined as X,Y,Theta,Curvature,V
 typedef Matrix<double,POSE_DIM-1,1> VectorError; // defined as X,Y,Theta,V
@@ -60,9 +63,11 @@ typedef std::vector<Eigen::Matrix4d,Eigen::aligned_allocator<Eigen::Matrix4d> > 
 typedef std::vector<Eigen::MatrixXdRowMaj,Eigen::aligned_allocator<Eigen::MatrixXdRowMaj> > MatrixXdRowMajAlignedVec;
 
 typedef std::vector<std::pair<Eigen::VectorPose,Eigen::VectorPose> > ErrorVec;
+
 } // namespace Eigen
 
-namespace CarPlanner {
+
+namespace carplanner {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 inline double SoftMaximum(double x, double y,const double multiplier = 1.0)
@@ -100,7 +105,6 @@ inline T powi(T num, int exp) {
 }
 
 ////////////////////////////////////////////////////////////////////////////
-
 template <class Derived> std::fstream& operator>>(std::fstream& fs, Eigen::MatrixBase<Derived>& mM) {
   typedef typename Eigen::internal::traits<Derived>::Scalar LScalar;
   std::string sLine;
@@ -330,4 +334,4 @@ inline Eigen::Matrix3d	TInv( const Eigen::Matrix3d& T )
 }
 
 
-} // namespace CarPlanner
+} // namespace carplanner

@@ -6,28 +6,28 @@
 class ControlCommand
 {
 public:
-    ControlCommand(): m_dForce(0), m_dCurvature(0), m_dT(0),m_dPhi(0), m_dTorque(0,0,0),m_dTime(0)
+    ControlCommand(): force_(0), curvature_(0), m_dT(0),m_dPhi(0), torque_(0,0,0),timestamp_(0)
     {
 
     }
     ControlCommand(const double& force,const double& curvature,
                     const Eigen::Vector3d& torques, const double& dt, const double& dPhi){
 
-        m_dForce = force;
+        force_ = force;
         //m_dControlAccel = accel;
-        m_dCurvature = curvature;
-        m_dTorque = torques;
+        curvature_ = curvature;
+        torque_ = torques;
         m_dT = dt;
         m_dPhi = dPhi;
     }
 
     //double m_dControlAccel;
-    double m_dForce;
-    double m_dCurvature;
+    double force_;
+    double curvature_;
     double m_dT;
     double m_dPhi;
-    Eigen::Vector3d m_dTorque;
-    double m_dTime;
+    Eigen::Vector3d torque_;
+    double timestamp_;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

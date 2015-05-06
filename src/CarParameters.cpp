@@ -71,7 +71,7 @@ bool CarParameters::LoadFromFile(const std::string sFile, std::map<int, double>&
 }
 
 ////////////////////////////////////////////////////////////////
-void CarParameters::PrintAllParams(const CarParameterMap &map)
+void CarParameters::PrintAllParams(const std::map<int, double> &map)
 {
     dout("Printing parameter map -----------------");
     for(const std::pair<int, double>& pair: map ){
@@ -81,7 +81,7 @@ void CarParameters::PrintAllParams(const CarParameterMap &map)
 
 ////////////////////////////////////////////////////////////////
 RegressionParameter::RegressionParameter(std::map<int, double>& map, int nKey, BulletCarModel* pModel/* = NULL*/):
-    m_dVal(map[nKey]),
+    vel_w_dot_al(map[nKey]),
     m_nKey(nKey),
     m_sName(CarParameters::Names[nKey]),
     m_pModel(pModel){}
@@ -90,7 +90,7 @@ RegressionParameter::RegressionParameter(std::map<int, double>& map, int nKey, B
 bool RegressionParameter::AreEqual(const std::vector<RegressionParameter>& params1, const std::vector<RegressionParameter>& params2)
 {
     for(size_t ii = 0 ; ii < params1.size() ; ii++) {
-        if(params1[ii].m_dVal != params2[ii].m_dVal){
+        if(params1[ii].vel_w_dot_al != params2[ii].vel_w_dot_al){
             return false;
         }
     }
@@ -100,7 +100,7 @@ bool RegressionParameter::AreEqual(const std::vector<RegressionParameter>& param
 ////////////////////////////////////////////////////////////////
 void RegressionParameter::UpdateValue(const double newVal)
 {
-    m_dVal = newVal;
+    vel_w_dot_al = newVal;
     std::vector<RegressionParameter> params = {*this};
     m_pModel->UpdateParameters(params);
 }

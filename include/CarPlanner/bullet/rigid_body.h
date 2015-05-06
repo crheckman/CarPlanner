@@ -4,7 +4,7 @@
 #include <Eigen/Eigen>
 #include "CarPlannerCommon.h"
 
-namespace CarPlanner {
+namespace carplanner {
 
 struct State {
   float x; // position
@@ -30,7 +30,7 @@ public:
     m_vII = m_vI.inverse();
     m_dMass = dMass;
 
-    m_dTime = -1;
+    timestamp_ = -1;
 
     //reset everything
     m_vV << 0, 0, 0;
@@ -47,8 +47,8 @@ public:
 
   void UpdateMotion(Eigen::Vector3d force, Eigen::Vector3d torque, double forceDt = -1, bool bIncludeGravity = true, bool bInBodyCoords = false) {
     //if this is the first time the function is called, get a timestamp and exit
-    if (m_dTime == -1) {
-      m_dTime = CarPlanner::Tic();
+    if (timestamp_ == -1) {
+      timestamp_ = CarPlanner::Tic();
       return;
     }
 
@@ -70,8 +70,8 @@ public:
     }
 
     //get the time elapsed since the last time this function was called
-    double dT = CarPlanner::Toc(m_dTime);
-    m_dTime = CarPlanner::Tic();
+    double dT = CarPlanner::Toc(timestamp_);
+    timestamp_ = CarPlanner::Tic();
 
     //allow the external caller to enforce dT
     if (forceDt != -1) {
@@ -188,11 +188,11 @@ private:
   Eigen::Matrix3d m_vI;
   Eigen::Matrix3d m_vII;
   double m_dMass;
-  double m_dTime;
+  double timestamp_;
   double m_dLastDt;
   Eigen::Vector3d m_vG;
 };
 
-} // end namespace CarPlanner
+} // end namespace carplanner
 
 #endif // RIGIDBODY_H

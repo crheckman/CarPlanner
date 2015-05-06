@@ -8,8 +8,10 @@
  * of this software for any purpose.
  * It is provided "as is" without express or implied warranty.
 */
-#include "CarPlanner/WheelInfo.h"
-#include "BulletDynamics/Dynamics/btRigidBody.h" // for pointvelocity
+
+
+#include <BulletDynamics/Dynamics/btRigidBody.h> // for pointvelocity
+#include <CarPlanner/bullet/wheel_info.h>
 
 
 btScalar WheelInfo::getSuspensionRestLength() const

@@ -85,7 +85,7 @@ struct BulletWorldInstance : public std::mutex
         m_pVehicle = NULL;
         m_pTerrainShape = NULL;
         m_pHeightfieldData = NULL;
-        m_dTime = -1;
+        timestamp_ = -1;
         m_bParametersChanged = false;
         m_dTotalCommandTime = 0;
     }
@@ -98,7 +98,7 @@ struct BulletWorldInstance : public std::mutex
     }
 
     std::vector<Sophus::SE3d> m_vWheelTransforms;
-    double m_dTime;
+    double timestamp_;
 
     btScalar *m_pHeightfieldData;
     btCollisionShape *m_pTerrainShape;

@@ -24,7 +24,7 @@ inline void current_utc_time(struct timespec *ts) {
 
 }
 
-namespace CarPlanner {
+namespace carplanner {
 
 // Aux Time Functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,4 +54,4 @@ inline double TocMS(double dTic) {
 }
 
 
-} // end namespace CarPlanner
+} // end namespace carplanner

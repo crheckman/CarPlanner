@@ -1,14 +1,12 @@
-#ifndef LOCALPLANNER_H
-#define LOCALPLANNER_H
+#pragma once
 
 #include <sophus/se3.hpp>
 #include <sophus/se2.hpp>
-#include "CarPlanner/CarPlannerCommon.h"
-#include "CarPlanner/ThreadPool.h"
-#include "CarPlanner/BulletCarModel.h"
-#include "CarPlanner/BoundarySolver.h"
-#include "CarPlanner/ApplyVelocitiesFunctor.h"
-#include "CarPlanner/BezierBoundarySolver.h"
+#include <CarPlanner/utils/thread_pool.h>
+#include <CarPlanner/bullet/bullet_car_model.h>
+#include <CarPlanner/BoundarySolver.h>
+#include <CarPlanner/ApplyVelocitiesFunctor.h>
+#include <CarPlanner/BezierBoundarySolver.h>
 
 #define XYZ_WEIGHT 2
 #define THETA_WEIGHT 0.5
@@ -40,9 +38,9 @@ enum PlannerError
 
 struct VelocityProfileNode
 {
-    VelocityProfileNode(const double& dDistanceRatio, const double& dVel) : m_dDistanceRatio(dDistanceRatio),m_dVel(dVel){}
+    VelocityProfileNode(const double& dDistanceRatio, const double& dVel) : m_dDistanceRatio(dDistanceRatio),vel_w_dot_el(dVel){}
     double m_dDistanceRatio;
-    double m_dVel;
+    double vel_w_dot_el;
 };
 
 struct AccelerationProfileNode
@@ -52,13 +50,13 @@ struct AccelerationProfileNode
         m_dEndTime(dEndTime),
         m_dAccel(dAccel),
         m_dEndDist(dEndDist),
-        m_dVStart(dVStart),
-        m_dVEnd(dVEnd){}
+        vel_w_dot_Start(dVStart),
+        vel_w_dot_End(dVEnd){}
     double m_dEndTime;
     double m_dAccel;
     double m_dEndDist;
-    double m_dVStart;
-    double m_dVEnd;
+    double vel_w_dot_Start;
+    double vel_w_dot_End;
 };
 
 typedef std::vector<VelocityProfileNode > VelocityProfile;
@@ -95,7 +93,7 @@ struct LocalProblem
 {
     void Reset()
     {
-        m_dTorqueStartTime = -1;
+        torque_StartTime = -1;
         m_dCoefs = Eigen::Vector4d::Zero();
         m_dStartTorques = Eigen::Vector3d::Zero();
         m_bInertialControlActive = false;
@@ -146,7 +144,7 @@ struct LocalProblem
     //optimization related properties
     BezierBoundaryProblem m_BoundaryProblem;           //< The boundary problem structure, describing the 2D boundary problem
     BoundarySolver* m_pBoundarySovler;          //< Pointer to the boundary value solver which will be used to solve the 2D problem
-    //double m_dCurrentNorm;                      //< The current norm of the optimization problem
+    //double current_norm_;                      //< The current norm of the optimization problem
     //MotionSample* m_pCurrentMotionSample;       //< Pointer to the current motion sample (which represents the current 3D trajectory)
     bool m_bInLocalMinimum;                     //< Boolean which indicates if we're in a local minimum, which would indicate that the optimization is finished
     PlannerError m_eError;
@@ -159,8 +157,8 @@ struct LocalProblem
     //double m_dDistanceDelta;
     Eigen::Vector4d m_dCoefs;
     bool m_bInertialControlActive;
-    double m_dTorqueStartTime;
-    double m_dTorqueDuration;
+    double torque_StartTime;
+    double torque_Duration;
     Eigen::Vector3d m_dStartTorques;
 
     void UpdateOptParams(const Eigen::VectorXd& dOptParams)
@@ -230,7 +228,7 @@ private:
     /// Transforms a vehicle state so that it is on the 2D manifold specified by the problem struct
     Eigen::Vector6d _Transform3dGoalPose(const VehicleState& state, const LocalProblem &problem) const;
 
-    ThreadPool m_ThreadPool;
+    ThreadPool thread_pool_;
 
     double& m_dEps;                                              //< The epsilon used in the calculation of the finite difference jacobian
 
@@ -241,5 +239,3 @@ private:
     Eigen::MatrixXd& m_dTrajWeight;
     int m_nPlanCounter;
 };
-
-#endif // LOCALPLANNER_H

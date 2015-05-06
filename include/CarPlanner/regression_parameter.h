@@ -2,7 +2,7 @@
 #include <CarPlanner/ninjacar.h>
 #include <CarPlanner/ninjacar_impl.h>
 
-namespace CarPlanner {
+namespace carplanner {
 
 struct RegressionParameter
 {
@@ -13,7 +13,7 @@ struct RegressionParameter
     static bool AreEqual(const std::vector<RegressionParameter>& params1,
                          const std::vector<RegressionParameter>& params2);
     void UpdateValue(const double newVal);
-    double m_dVal;
+    double vel_w_dot_al;
     int m_nKey;
     std::string m_sName;
     std::shared_ptr<NinjaCar<Vehicle,Controller,Planner>> m_pModel;
@@ -23,7 +23,7 @@ struct RegressionParameter
 inline std::ostream& operator<<( std::ostream& Stream,
                                  RegressionParameter& parameter )
 {
-    Stream << parameter.m_dVal;
+    Stream << parameter.vel_w_dot_al;
     return Stream;
 }
 
@@ -43,7 +43,7 @@ inline std::ostream& operator<<( std::ostream& Stream,
 
     for( unsigned int ii = 0; ii < params.size(); ii++ ) {
         Stream << params[ii].m_sName << ":";
-        Stream << params[ii].m_dVal;
+        Stream << params[ii].vel_w_dot_al;
         Stream << ", ";
     }
 
@@ -53,4 +53,4 @@ inline std::ostream& operator<<( std::ostream& Stream,
 
 }
 
-} //namespace CarPlanner
+} //namespace carplanner

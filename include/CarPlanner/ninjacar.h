@@ -1,34 +1,31 @@
 #pragma once
-#include <vector>
-#include <sophus/se3.hpp>
 #include <memory>
 
-#include <CarPlanner/control/control_impl.h>
-#include <CarPlanner/plan/planner_impl.h>
+#include <CarPlanner/utils/vector.h>
 #include <CarPlanner/control_command.h>
 #include <CarPlanner/ninjacar_impl.h>
+#include <CarPlanner/vehicle_parameters.h>
+#include <CarPlanner/vehicle_state.h>
 
-namespace CarPlanner {
+namespace carplanner {
 /*
- * CRTP for CarPlanner based on what kind of vehicle, planner and controller we
- * are using.
+ * Polymorphism for CarPlanner based on what kind of vehicle, planner and
+ * controller we are using.
  *
  */
 
 template<typename Vehicle,
-         typename Planner,
          typename Controller>
 
 class NinjaCar {
 protected:
   typedef Eigen::Matrix<double,2,1> Vec2d;
   typedef Eigen::Matrix<double,3,1> Vec3d;
-  typedef Sophus::SE3Group<double> SE3d;
 
 public:
   NinjaCar() {}
 
-  NinjaCar( const NinjaCar<Vehicle,Planner,Controller>& other ) :
+  NinjaCar( const NinjaCar<Vehicle,Controller>& other ) :
      params_(other.params_), state_(other.state_) {}
 
   virtual ~NinjaCar() {}
@@ -48,20 +45,26 @@ public:
   /* Provide get/set methods for member variables we want to be public. */
 
   /// Get/Set for State.
-  virtual void SetState( const Eigen::VectorXd& state ) {
+  virtual void SetState( const VehicleState& state ) {
     state_ = state;
   }
 
-  virtual Eigen::VectorXd GetState() const {
+  virtual VehicleState GetState() const {
     return state_;
   }
 
+  /// Get for Vehicle and Controller.
+  /// Will simply return a string based on which we're using.
+  virtual std::string GetVehicleModel() = 0;
+
+  virtual std::string GetController() = 0;
+
   /// Get/Set for Params.
-  virtual void SetParams( const Eigen::VectorXd& params ) {
+  virtual void SetParams( const VehicleParameters& params ) {
     params_ = params;
   }
 
-  virtual Eigen::VectorXd GetParams() const {
+  virtual VehicleParameters GetParams() const {
     return params_;
   }
 
@@ -75,15 +78,15 @@ public:
   }
 
 protected:
-  NinjaCar( const Eigen::VectorXd& params_in,
-            const Eigen::VectorXd& state_in )
+  NinjaCar( const VehicleParameters& params_in,
+            const VehicleState& state_in )
     : params_(params_in), state_(state_in) {
   }
 
-  Eigen::VectorXd params_;
   std::string name_;
   std::string type_;
-  Eigen::VectorXd state_;
+  VehicleParameters params_;
+  VehicleState state_;
   std::vector<std::vector<double>> control_list_;
 
 };

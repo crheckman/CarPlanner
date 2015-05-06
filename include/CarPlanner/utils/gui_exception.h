@@ -5,8 +5,7 @@
  *      Author: nima
  */
 
-#ifndef MOCHAEXCEPTION_H_
-#define MOCHAEXCEPTION_H_
+#pragma once
 
 #include <iostream>
 #include <exception>
@@ -14,15 +13,13 @@ using namespace std;
 
 
 
-class MochaException : public exception
+class GuiException : public exception
 {
 private:
 	const char *m_pWhat;
 public:
-	MochaException(const char *what);
-	virtual ~MochaException()  throw() ;
+    GuiException(const char *what);
+    virtual ~GuiException()  throw() ;
 	virtual const char* what();
 };
 
-
-#endif /* MOCHAEXCEPTION_H_ */

@@ -1,17 +1,20 @@
-#ifndef APPLYVELOCITIESFUNCTOR_H
-#define APPLYVELOCITIESFUNCTOR_H
+#pragma once
 
 #include <vector>
 #include <cmath>
-#include <Eigen/LU>
-#include <Eigen/Core>
-#include <CVars/CVar.h>
 #include <float.h>
-#include "RpgUtils.h"
-#include "CarPlannerCommon.h"
-#include "BulletCarModel.h"
 #include <thread>
 #include <queue>
+
+#include <Eigen/LU>
+#include <Eigen/Core>
+
+#include <CVars/CVar.h>
+
+#include <CarPlanner/ninjacar.h>
+#include <CarPlanner/vehicle_state.h>
+#include <CarPlanner/vehicle_parameters.h>
+#include <CarPlanner/bullet/bullet_car_model.h>
 
 #define CAR_GRAVITY_COMPENSATION_COEFFICIENT 1.0
 #define CAR_STEERING_COMPENSATION_COEFFICIENT 0
@@ -26,7 +29,7 @@ struct ControlSample
 {
 public:
     double m_dSpeed;
-    double m_dSteering;
+    double steering_cmd_;
     double m_Dt;
 };
 
@@ -39,8 +42,8 @@ struct MotionSample
     {
         double dMax = 0;//DBL_MIN;
         for(size_t ii = 0 ; ii < m_vCommands.size() ; ii++){
-            //dMax = std::max(dMax,m_vCommands[ii].m_dCurvature);
-            dMax += m_vCommands[ii].m_dCurvature;
+            //dMax = std::max(dMax,m_vCommands[ii].curvature_);
+            dMax += m_vCommands[ii].curvature_;
         }
         return dMax;
     }
@@ -63,7 +66,7 @@ struct MotionSample
         std::vector<Sophus::SE3d> vPoses;
         vPoses.reserve(m_vStates.size());
         for(const VehicleState& state : m_vStates){
-            vPoses.push_back(state.m_dTwv);
+            vPoses.push_back(state.t_wv_);
         }
         return vPoses;
     }
@@ -76,11 +79,11 @@ struct MotionSample
             for(size_t ii = 1; ii < m_vStates.size() ; ii++){
                 //const VehicleState& state = m_vStates[ii];
                 const ControlCommand& command = m_vCommands[ii];
-                //cost = std::max(state.m_dV.norm() * state.m_dW.norm(),cost);
-                //cost += fabs(state.m_dV.norm() * state.m_dW[2]) - fabs(m_vCommands[ii].m_dCurvature);
+                //cost = std::max(state.vel_w_dot_.norm() * state.omega_w_dot_.norm(),cost);
+                //cost += fabs(state.vel_w_dot_.norm() * state.omega_w_dot_[2]) - fabs(m_vCommands[ii].curvature_);
                 cost += fabs(command.m_dPhi - pPrevCommand->m_dPhi);
                 pPrevCommand = &m_vCommands[ii];
-                //cost += fabs(state.m_dSteering);
+                //cost += fabs(state.steering_cmd_);
             }
             cost /= GetDistance();
         }
@@ -91,10 +94,10 @@ struct MotionSample
     {
         double dist = 0;
         if(m_vStates.empty() == false){
-            Eigen::Vector3d lastPos = m_vStates[0].m_dTwv.translation();
+            Eigen::Vector3d lastPos = m_vStates[0].t_wv_.translation();
             for(const VehicleState& state : m_vStates){
-                dist += (state.m_dTwv.translation()-lastPos).norm();
-                lastPos = state.m_dTwv.translation();
+                dist += (state.t_wv_.translation()-lastPos).norm();
+                lastPos = state.t_wv_.translation();
             }
         }
         return dist;
@@ -146,8 +149,6 @@ struct MotionSample
     }
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class ControlPlan
 {
@@ -188,14 +189,14 @@ public:
 class ApplyVelocitesFunctor5d
 {
 public:
-    ApplyVelocitesFunctor5d(BulletCarModel *pCarModel,
-                            Eigen::Vector3d dInitTorques,
-                            CommandList* pPreviousCommands = NULL);
+    ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::NinjaCar<Vehicle,Controller>> vehicle,
+                            Eigen::Vector3d init_torques,
+                            CommandList* previous_commands = NULL);
 
-    VehicleState ApplyVelocities(const VehicleState &startState,
+    VehicleState ApplyVelocities(const VehicleState &start_state,
                                  MotionSample& sample,
-                                 int nIndex = 0,
-                                 bool noCompensation = false);
+                                 int index = 0,
+                                 bool no_compensation = false);
 
     void ApplyVelocities(const VehicleState &startingState,
                          std::vector<ControlCommand> &m_vCommands,
@@ -207,21 +208,21 @@ public:
                          const CommandList *pPreviousCommands = NULL);
 
 
-    double GetMaxWheelTorque(const VehicleState& state, const int nIndex);
-    double GetGravityCompensation(int nIndex);
-    double GetSteeringCompensation(VehicleState& state, double phi, double curvature, int nIndex);
-    double GetFrictionCompensation(int nIndex, double dt);
+    double max_wheel_torque(const VehicleState& state, const int nIndex);
+    double gravity_compensation(int nIndex);
+    double steering_compensation(VehicleState& state, double phi, double curvature, int nIndex);
+    double friction_compensation(int nIndex, double dt);
 
-    BulletCarModel* GetCarModel(){ return m_pCarModel; }
-    const BulletCarModel* GetCarModel() const{ return m_pCarModel; }
-    CommandList& GetPreviousCommand() { return m_lPreviousCommands; }
-    void SetPreviousCommands(const CommandList& list) { m_lPreviousCommands = list;}
-    void ResetPreviousCommands() { return m_lPreviousCommands.clear(); }
-    bool SetNoDelay(bool bNoDelay){ return (m_bNoDelay = bNoDelay); }
+    std::shared_ptr<carplanner::NinjaCar<Vehicle,Controller>> vehicle(){ return vehicle_; }
+    const std::shared_ptr<carplanner::NinjaCar<Vehicle,Controller>> vehicle() const{ return vehicle_; }
+    CommandList& previous_command() { return previous_commands_; }
+    void set_previous_commands(const CommandList& list) { previous_commands_ = list;}
+    void reset_previous_commands() { return previous_commands_.clear(); }
+    bool set_no_delay(bool no_delay){ return (no_delay_ = no_delay); }
 private:
-    BulletCarModel *m_pCarModel;
-    Eigen::Vector3d m_dInitTorques;
-    CommandList m_lPreviousCommands;
-    bool m_bNoDelay;
+    std::shared_ptr<carplanner::NinjaCar<Vehicle,Controller>> vehicle_;
+    Eigen::Vector3d init_torques_;
+    CommandList previous_commands_;
+    bool no_delay_;
 };
-#endif // APPLYVELOCITIESFUNCTOR_H
+

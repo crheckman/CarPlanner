@@ -62,9 +62,9 @@ public:
         }
         
         //based on this, calcualte the force 
-        m_dForce = (m_dMaxExtension-m_dExtension)*m_dK;
+        force_ = (m_dMaxExtension-m_dExtension)*m_dK;
         if(dT > 0) {
-            m_dForce += (-(m_dExtension-oldExt)/dT)*m_dD;
+            force_ += (-(m_dExtension-oldExt)/dT)*m_dD;
         }
     }
     
@@ -112,7 +112,7 @@ public:
     }
     
     double GetForce() {
-        return m_dForce;
+        return force_;
     }
     
     void SetExtension(double dExtension) {
@@ -145,8 +145,8 @@ private:
     double m_dLastTime;
     //state space:
     double m_dExtension;    //how far has the spring extended
-    double m_dVelocity;     //what is the velocity of the contact point?
-    double m_dForce;        //the force of the spring and damper combined
+    double vel_w_dot_elocity;     //what is the velocity of the contact point?
+    double force_;        //the force of the spring and damper combined
 
     //physical constraints
     double m_dMaxExtension;

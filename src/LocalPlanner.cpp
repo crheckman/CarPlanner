@@ -1,7 +1,7 @@
 #include "CarPlanner/CVarHelpers.h"
 #include "CarPlanner/LocalPlanner.h"
 
-using namespace CarPlanner;
+using namespace carplanner;
 
 static bool& g_bUseCentralDifferences = CVarUtils::CreateGetUnsavedCVar("debug.UseCentralDifferences",true);
 static double& g_dSuccessNorm = CVarUtils::CreateGetUnsavedCVar("debug.SuccessNorm",0.01);
@@ -73,7 +73,7 @@ inline Eigen::VectorXd GetPointLineError(const Eigen::Vector6d& line1,const Eige
 }
 
 LocalPlanner::LocalPlanner() :
-    m_ThreadPool(PLANNER_NUM_THREADS),
+    thread_pool_(PLANNER_NUM_THREADS),
     m_dEps(CVarUtils::CreateUnsavedCVar("planner.Epsilon", 1e-6, "Epsilon value used in finite differences.")),
     m_dPointWeight(CVarUtils::CreateUnsavedCVar("planner.PointCostWeights",Eigen::MatrixXd(1,1))),
     m_dTrajWeight(CVarUtils::CreateUnsavedCVar("planner.TrajCostWeights",Eigen::MatrixXd(1,1))),
@@ -125,14 +125,14 @@ Eigen::Vector6d LocalPlanner::_Transform3dGoalPose(const VehicleState& state,
                                                    const LocalProblem &problem) const
 {
     //also transfer this pose into the 3d projected space we are working on
-    const Sophus::SE3d dPose = problem.m_dT3d * state.m_dTwv;
+    const Sophus::SE3d dPose = problem.m_dT3d * state.t_wv_;
     Eigen::Vector6d untransformedPose;
     untransformedPose << dPose.translation()[0],
                          dPose.translation()[1],
                          dPose.translation()[2],
                          atan2( dPose.matrix()(1,0), dPose.matrix()(0,0)),
                          0,
-                         state.m_dV.norm();
+                         state.vel_w_dot_.norm();
 
     return _TransformGoalPose(untransformedPose,problem);
 }
@@ -167,7 +167,7 @@ Eigen::VectorXd LocalPlanner::_GetTrajectoryError(const MotionSample& sample,
         Eigen::Vector3d cartError = vTransformedPoses[ii].head(3) - endPose.head(3);
         double norm = (cartError).norm();
         if(norm < dMinDist){
-            dMinTime = sample.m_vStates[ii].m_dTime;
+            dMinTime = sample.m_vStates[ii].timestamp_;
             minPose = vTransformedPoses[ii];;
             minPoseAfter = ii < (nTrajSize-1) ? vTransformedPoses[ii+1] : minPose;
             minPoseBefore = ii > 0 ? vTransformedPoses[ii-1] : minPose;
@@ -190,7 +190,7 @@ Eigen::VectorXd LocalPlanner::_GetTrajectoryError(const MotionSample& sample,
     if(minPose != minPoseBefore){
         beforeError = GetPointLineError(minPoseBefore,minPose,endPose,dInterpolationFactor);
         if(beforeError.head(3).norm() < error.head(3).norm()){
-            dMinTime = (1.0-dInterpolationFactor)*sample.m_vStates[nMinIdx-1].m_dTime + dInterpolationFactor*sample.m_vStates[nMinIdx].m_dTime;
+            dMinTime = (1.0-dInterpolationFactor)*sample.m_vStates[nMinIdx-1].timestamp_ + dInterpolationFactor*sample.m_vStates[nMinIdx].timestamp_;
             error = beforeError;
         }
     }
@@ -200,7 +200,7 @@ Eigen::VectorXd LocalPlanner::_GetTrajectoryError(const MotionSample& sample,
     if(minPose != minPoseAfter){
         afterError = GetPointLineError(minPose,minPoseAfter,endPose,dInterpolationFactor);
         if(afterError.head(3).norm() < error.head(3).norm()){
-            dMinTime = (1.0-dInterpolationFactor)*sample.m_vStates[nMinIdx].m_dTime + dInterpolationFactor*sample.m_vStates[nMinIdx+1].m_dTime;
+            dMinTime = (1.0-dInterpolationFactor)*sample.m_vStates[nMinIdx].timestamp_ + dInterpolationFactor*sample.m_vStates[nMinIdx+1].timestamp_;
             error = afterError;
         }
     }
@@ -256,7 +256,7 @@ Eigen::VectorXd LocalPlanner::_CalculateSampleError(const MotionSample& sample,
     }
     //get the normalized velocity
     VehicleState state = sample.m_vStates.back();
-    Eigen::Vector3d dW_goal = problem.m_GoalState.m_dTwv.so3().inverse()* state.m_dW;
+    Eigen::Vector3d dW_goal = problem.m_GoalState.t_wv_.so3().inverse()* state.omega_w_dot_;
     if(state.IsAirborne()){
         state.AlignWithVelocityVector();
     }
@@ -315,7 +315,7 @@ Eigen::VectorXd LocalPlanner::_CalculateSampleError(const MotionSample& sample,
         //segment cost
 
         error[error.rows()-2] = g_dTimeTarget-dMinTrajTime;
-        error[error.rows()-1] = state.m_dV.norm()*dW_goal[2] - problem.m_GoalState.m_dCurvature; // sample.GetBadnessCost();
+        error[error.rows()-1] = state.vel_w_dot_.norm()*dW_goal[2] - problem.m_GoalState.curvature_; // sample.GetBadnessCost();
 
     }
     return error;
@@ -353,7 +353,7 @@ bool LocalPlanner::_CalculateJacobian(LocalProblem& problem,
                                                                           errors[plusIdx],
                                                                           (vCubicProblems[plusIdx]->m_CurrentSolution.m_Sample),
                                                                           true);
-        m_ThreadPool.enqueue(*vFunctors[plusIdx]);
+        thread_pool_.enqueue(*vFunctors[plusIdx]);
 
         if(g_bUseCentralDifferences == true){
             vCubicProblems[minusIdx] = std::make_shared<LocalProblem>(problem);
@@ -368,7 +368,7 @@ bool LocalPlanner::_CalculateJacobian(LocalProblem& problem,
                                                                                errors[minusIdx],
                                                                                (vCubicProblems[minusIdx]->m_CurrentSolution.m_Sample),
                                                                                true);
-            m_ThreadPool.enqueue(*vFunctors[minusIdx]);
+            thread_pool_.enqueue(*vFunctors[minusIdx]);
         }
     }
 
@@ -381,11 +381,11 @@ bool LocalPlanner::_CalculateJacobian(LocalProblem& problem,
                                                      dCurrentError,
                                                      (currentProblem->m_CurrentSolution.m_Sample),
                                                      true);
-    m_ThreadPool.enqueue(*currentFunctor);
+    thread_pool_.enqueue(*currentFunctor);
 
 
     //wait for all simulations to finish
-    while(m_ThreadPool.busy_threads() > (m_ThreadPool.num_threads())){
+    while(thread_pool_.busy_threads() > (thread_pool_.num_threads())){
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -458,7 +458,7 @@ double LocalPlanner::_DistanceTraveled( const double& t,
             continue;
         }else{
             double dt = t - lastTime;
-            totalDist += profile[ii].m_dVStart * dt + (profile[ii].m_dVEnd - profile[ii].m_dVStart)*(dt * dt) / (2.0 * (profile[ii].m_dEndTime-lastTime));
+            totalDist += profile[ii].vel_w_dot_Start * dt + (profile[ii].vel_w_dot_End - profile[ii].vel_w_dot_Start)*(dt * dt) / (2.0 * (profile[ii].m_dEndTime-lastTime));
             break;
         }
     }
@@ -499,12 +499,12 @@ void LocalPlanner::SampleAcceleration(std::vector<ControlCommand>& vCommands,
         }
 
         //if needed, add torques
-        double endTime = problem.m_dTorqueStartTime + problem.m_dTorqueDuration;
+        double endTime = problem.torque_StartTime + problem.torque_Duration;
         Eigen::Vector3d dTorques = Eigen::Vector3d::Zero();
-        if(t >= problem.m_dTorqueStartTime && problem.m_dTorqueStartTime != -1 && t <= (endTime)){
-            dTorques(1) = problem.m_dCoefs(0) + problem.m_dCoefs(1)*(t-problem.m_dTorqueStartTime) +
-                          problem.m_dCoefs(2)*powi((t-problem.m_dTorqueStartTime),2) +
-                          problem.m_dCoefs(3)*powi((t-problem.m_dTorqueStartTime),3);
+        if(t >= problem.torque_StartTime && problem.torque_StartTime != -1 && t <= (endTime)){
+            dTorques(1) = problem.m_dCoefs(0) + problem.m_dCoefs(1)*(t-problem.torque_StartTime) +
+                          problem.m_dCoefs(2)*powi((t-problem.torque_StartTime),2) +
+                          problem.m_dCoefs(3)*powi((t-problem.torque_StartTime),3);
         }
         vCommands.push_back(ControlCommand(problem.m_vAccelProfile[accelIndex].m_dAccel+(problem.m_CurrentSolution.m_dOptParams[OPT_ACCEL_DIM]/problem.m_dSegmentTime),curvature,dTorques,actualDt,0));
     }
@@ -556,13 +556,13 @@ void LocalPlanner::_GetAccelerationProfile(LocalProblem& problem) const
     for(size_t ii = 1; ii < problem.m_vVelProfile.size(); ii++){
         //calculate the distance in this segment
         double segDist = (problem.m_vVelProfile[ii].m_dDistanceRatio - problem.m_vVelProfile[ii-1].m_dDistanceRatio)*totalDist;
-        double segTime = segDist / (problem.m_vVelProfile[ii-1].m_dVel + 0.5 * (problem.m_vVelProfile[ii].m_dVel - problem.m_vVelProfile[ii-1].m_dVel));
+        double segTime = segDist / (problem.m_vVelProfile[ii-1].vel_w_dot_el + 0.5 * (problem.m_vVelProfile[ii].vel_w_dot_el - problem.m_vVelProfile[ii-1].vel_w_dot_el));
         totalTime += segTime;
         currentDist += segDist;
 
         //push back the accel profile
-        double accel = (problem.m_vVelProfile[ii].m_dVel - problem.m_vVelProfile[ii-1].m_dVel)/segTime;
-        problem.m_vAccelProfile.push_back(AccelerationProfileNode(totalTime,accel,currentDist,problem.m_vVelProfile[ii-1].m_dVel,problem.m_vVelProfile[ii].m_dVel));
+        double accel = (problem.m_vVelProfile[ii].vel_w_dot_el - problem.m_vVelProfile[ii-1].vel_w_dot_el)/segTime;
+        problem.m_vAccelProfile.push_back(AccelerationProfileNode(totalTime,accel,currentDist,problem.m_vVelProfile[ii-1].vel_w_dot_el,problem.m_vVelProfile[ii].vel_w_dot_el));
     }
     problem.m_dSegmentTime = totalTime;
 }
@@ -579,15 +579,15 @@ bool LocalPlanner::InitializeLocalProblem(LocalProblem& problem,
     //if there are previous commands, apply them so we may make a more educated guess
     MotionSample delaySample;
     double totalDelay = problem.m_pFunctor->GetCarModel()->GetParameters(0)[CarParameters::ControlDelay];
-    if(totalDelay > 0 && problem.m_pFunctor->GetPreviousCommand().size() != 0){
-        CommandList::iterator it  = problem.m_pFunctor->GetPreviousCommand().begin();
-        while(totalDelay > 0 && it != problem.m_pFunctor->GetPreviousCommand().end()){
+    if(totalDelay > 0 && problem.m_pFunctor->previous_Command().size() != 0){
+        CommandList::iterator it  = problem.m_pFunctor->previous_Command().begin();
+        while(totalDelay > 0 && it != problem.m_pFunctor->previous_Command().end()){
             delaySample.m_vCommands.insert(delaySample.m_vCommands.begin(),(*it));
             totalDelay -= (*it).m_dT;
             ++it;
         }
-        problem.m_pFunctor->ResetPreviousCommands();
-        problem.m_pFunctor->SetNoDelay(true);
+        problem.m_pFunctor->Reset_previous_Commands();
+        problem.m_pFunctor->Set_no_Delay(true);
         problem.m_pFunctor->ApplyVelocities(problem.m_StartState,delaySample,0,true);
         //and now set the starting state to this new value
         problem.m_StartState = delaySample.m_vStates.back();
@@ -595,18 +595,18 @@ bool LocalPlanner::InitializeLocalProblem(LocalProblem& problem,
 
     //regardless of the delay, for local planning we always want to proceed with no delay and with no previous commands
     //as the previous section should take care of that
-    problem.m_pFunctor->ResetPreviousCommands();
-    problem.m_pFunctor->SetNoDelay(true);
+    problem.m_pFunctor->Reset_previous_Commands();
+    problem.m_pFunctor->Set_no_Delay(true);
 
-    Sophus::SE3d dTranslation(Sophus::SO3d(),-problem.m_StartState.m_dTwv.translation());
+    Sophus::SE3d dTranslation(Sophus::SO3d(),-problem.m_StartState.t_wv_.translation());
 
     //first translate to base everything around dStartPose
-    Sophus::SE3d dFixedStart = problem.m_StartState.m_dTwv;
-    Sophus::SE3d dFixedGoal = problem.m_GoalState.m_dTwv;
+    Sophus::SE3d dFixedStart = problem.m_StartState.t_wv_;
+    Sophus::SE3d dFixedGoal = problem.m_GoalState.t_wv_;
 
     //now rotate everything to a frame inbetween the two
-    Eigen::Quaternion<double> dStartQuat = problem.m_StartState.m_dTwv.so3().unit_quaternion();
-    Eigen::Quaternion<double> dEndQuat = problem.m_GoalState.m_dTwv.so3().unit_quaternion();
+    Eigen::Quaternion<double> dStartQuat = problem.m_StartState.t_wv_.so3().unit_quaternion();
+    Eigen::Quaternion<double> dEndQuat = problem.m_GoalState.t_wv_.so3().unit_quaternion();
     //find the halfway rotation
     Eigen::Quaternion<double> dMidQuat = dStartQuat.slerp(0.5,dEndQuat);
 
@@ -626,8 +626,8 @@ bool LocalPlanner::InitializeLocalProblem(LocalProblem& problem,
 
     VehicleState dStartStateFixed = problem.m_StartState;
     VehicleState dGoalStateFixed = problem.m_GoalState;
-    dStartStateFixed.m_dTwv = dFixedStart;
-    dGoalStateFixed.m_dTwv = dFixedGoal;
+    dStartStateFixed.t_wv_ = dFixedStart;
+    dGoalStateFixed.t_wv_ = dFixedGoal;
     //and now we can project to 2d and get our 2d planner points
     Eigen::Vector6d dStartPose2D = dStartStateFixed.ToPose();
     Eigen::Vector6d dGoalPose2D = dGoalStateFixed.ToPose();
@@ -754,7 +754,7 @@ void LocalPlanner::CalculateTorqueCoefficients(LocalProblem& problem,
         if(pSample->m_vStates[ii].IsAirborne()){
             dAirTime += pSample->m_vCommands[ii].m_dT;
             nStartIndex = ii;
-            dStartTime = pSample->m_vStates[ii].m_dTime;
+            dStartTime = pSample->m_vStates[ii].timestamp_;
         }else{
             if(dAirTime != 0){
                 if(dAirTime > dLongestAirTime){
@@ -781,33 +781,33 @@ void LocalPlanner::CalculateTorqueCoefficients(LocalProblem& problem,
         //find the goal state based on the cost type
         Sophus::SO3d dGoalState;
         if(problem.m_eCostMode == eCostPoint){
-            dGoalState = problem.m_GoalState.m_dTwv.so3();
+            dGoalState = problem.m_GoalState.t_wv_.so3();
         }else{
-            dGoalState = problem.m_GoalState.m_dTwv.so3();
+            dGoalState = problem.m_GoalState.t_wv_.so3();
 
             bool bCurrentAirborne = problem.m_Trajectory.m_vStates[0].IsAirborne();
             for(size_t ii = 1 ; ii < problem.m_Trajectory.m_vStates.size() ; ii++){
                 bool bTemp = problem.m_Trajectory.m_vStates[ii].IsAirborne();
                 if(bTemp == false && bCurrentAirborne == true){
-                    dGoalState = problem.m_Trajectory.m_vStates[ii].m_dTwv.so3();
+                    dGoalState = problem.m_Trajectory.m_vStates[ii].t_wv_.so3();
                     break;
                 }
                 bCurrentAirborne = bTemp;
             }
         }
         //calculate the change in angles necessary
-        const Sophus::SO3d Rw_dest = problem.m_GoalState.m_dTwv.so3();
-        const Sophus::SO3d Rw_init = pSample->m_vStates[nStartIndex].m_dTwv.so3();
+        const Sophus::SO3d Rw_dest = problem.m_GoalState.t_wv_.so3();
+        const Sophus::SO3d Rw_init = pSample->m_vStates[nStartIndex].t_wv_.so3();
 
         //angle in body frame
         const Eigen::Vector3d angles(0,
                                      rpg::AngleWrap(rpg::R2Cart(Rw_dest.matrix())[1]-rpg::R2Cart(Rw_init.matrix())[1]),// - (problem.m_eCostMode == eCostPoint ? M_PI*2 : 0),
                                      0);// = Rinit_dest.log();
 
-        const Eigen::Vector3d dInertia = problem.m_pFunctor->GetCarModel()->GetVehicleInertiaTensor(0);
-        const Sophus::SO3d Rwv = pSample->m_vStates[nStartIndex].m_dTwv.so3();
+        const Eigen::Vector3d dInertia = problem.m_pFunctor->GetCarModel()->VehicleInertiaTensor(0);
+        const Sophus::SO3d Rwv = pSample->m_vStates[nStartIndex].t_wv_.so3();
         //angular velocities in body frame
-        const Eigen::Vector3d omega_v = Rwv.inverse() * pSample->m_vStates[nStartIndex].m_dW;
+        const Eigen::Vector3d omega_v = Rwv.inverse() * pSample->m_vStates[nStartIndex].omega_w_dot_;
 
         //calculate the coefficients
         Eigen::Matrix4d A;
@@ -821,10 +821,10 @@ void LocalPlanner::CalculateTorqueCoefficients(LocalProblem& problem,
             Eigen::Matrix4d Ainertia = A / dInertia(1);
             B << problem.m_dStartTorques(1),0, -omega_v(1), angles(1) - omega_v(1)*dAirTime;
             problem.m_dCoefs = Ainertia.inverse() * B;
-            problem.m_dTorqueStartTime = dStartTime;
-            problem.m_dTorqueDuration = dAirTime;
+            problem.torque_StartTime = dStartTime;
+            problem.torque_Duration = dAirTime;
     }else{
-        problem.m_dTorqueStartTime = -1;
+        problem.torque_StartTime = -1;
     }
 }
 
@@ -937,10 +937,10 @@ bool LocalPlanner::_IterateGaussNewton( LocalProblem& problem )
                                                                          pDampingErrors[ii],
                                                                          vCubicProblems[ii]->m_CurrentSolution.m_Sample,
                                                                          true);
-            m_ThreadPool.enqueue(*vFunctors[ii]);
+            thread_pool_.enqueue(*vFunctors[ii]);
             damping/= DAMPING_DIVISOR;
         }
-        while(m_ThreadPool.busy_threads() > (m_ThreadPool.num_threads())){
+        while(thread_pool_.busy_threads() > (thread_pool_.num_threads())){
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
