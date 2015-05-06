@@ -1,5 +1,4 @@
-#ifndef _CVAR_HELPERS_
-#define _CVAR_HELPERS_
+#pragma once
 
 #include <CVars/CVarVectorIO.h>
 #include <Eigen/Core>
@@ -120,6 +119,3 @@ namespace CVarUtils
         return Stream;
     }
 }
-
-#endif
-

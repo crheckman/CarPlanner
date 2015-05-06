@@ -5,12 +5,14 @@
 
 #include <CarPlanner/control/control_impl.h>
 #include <CarPlanner/plan/planner_impl.h>
-#include <CarPlanner/vehicle/vehicle_impl.h>
+#include <CarPlanner/control_command.h>
+#include <CarPlanner/ninjacar_impl.h>
 
 namespace CarPlanner {
 /*
  * CRTP for CarPlanner based on what kind of vehicle, planner and controller we
  * are using.
+ *
  */
 
 template<typename Vehicle,
@@ -34,10 +36,10 @@ public:
   /* Now define the available methods for CarPlanner in pure virtual */
 
   /// Interpolate waypoint list.
-  virtual std::vector<SE3d> Plan(const std::vector<SE3d>& waypoints) const = 0;
+  virtual std::vector<SE3d> GetPlan(const std::vector<SE3d>& waypoints) const = 0;
 
-  /// Calculate instantaneous car commands.
-  virtual std::vector<double> Control( const Eigen::VectorXd& target_point) const = 0;
+  /// Calculate instantaneous car control inputs in a vector.
+  virtual CommandList GetControl( const Eigen::VectorXd& target_point) const = 0;
 
   /// Pose must be implemented by the CarModel.
   /// There is no SetPose as a result.
@@ -46,7 +48,7 @@ public:
   /* Provide get/set methods for member variables we want to be public. */
 
   /// Get/Set for State.
-  virtual void SetState( const Eigen::VectorXd* state ) {
+  virtual void SetState( const Eigen::VectorXd& state ) {
     state_ = state;
   }
 
@@ -63,15 +65,6 @@ public:
     return params_;
   }
 
-  /// Get/Set for RDF.
-  virtual void SetRDF( const Eigen::Matrix<double, 3, 3>& rdf ) {
-    rdf_ = rdf;
-  }
-
-  virtual Eigen::Matrix<double, 3, 3> GetRDF() const {
-    return rdf_;
-  }
-
   /// Get/Set for Name.
   virtual void SetName( const std::string& name ) {
     name_ = name;
@@ -82,15 +75,16 @@ public:
   }
 
 protected:
-  NinjaCar( const std::vector<double>& params_in )
-    : params_(params_in) {
+  NinjaCar( const Eigen::VectorXd& params_in,
+            const Eigen::VectorXd& state_in )
+    : params_(params_in), state_(state_in) {
   }
 
-  std::vector<double> params_;
+  Eigen::VectorXd params_;
   std::string name_;
   std::string type_;
   Eigen::VectorXd state_;
-  Eigen::Matrix<double, 3, 3> rdf_;
+  std::vector<std::vector<double>> control_list_;
 
 };
 

@@ -1,74 +1,30 @@
-#ifndef CARPLANNERCOMMON_H
-#define CARPLANNERCOMMON_H
-#define DEBUG 1
-
+#pragma once
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 #include <Eigen/StdVector>
-#include <stdio.h>
-#include <fstream>
-#include <vector>
-#include <sys/time.h>
-#include <time.h>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <atomic>
 #include <sophus/se3.hpp>
+#include <CarPlanner/utils/cvar_helpers.h>
 
-#ifdef __APPLE__
-#include <mach/clock.h>
-#include <mach/mach.h>
-#define SetThreadName(x) pthread_setname_np(x); //crh
-#else
-#include <sys/prctl.h>
-#define SetThreadName(x) prctl(PR_SET_NAME,x,0,0,0);
-#endif
-
-#define DEBUG 1
-#ifdef DEBUG
-#define dout(str) std::cout << __FUNCTION__ << " --  " << str << std::endl
-#define dout_cond(str,x) if(x)std::cout << __FUNCTION__ << " --  " << str << std::endl
-#else
-#define dout(str)
-#endif
-
-//#define CAR_HEIGHT_OFFSET 0.06
+#define CURVE_DIM 4 //number of dimensions for the curve
+#define ACCEL_INDEX 4 //the index of the acceleration
+#define POSE2D_DIM 4
+#define POSE_DIM 5
+#define SERVO_RANGE 500.0
 
 template <typename T> int sgn(T val) {
   return (T(0) < val) - (val < T(0));
 }
 
-enum OptimizationTask {
-  eGaussNewton = 0,
-  eDiscrete = 1,
-  eDiscreteSearch = 2
-};
+template<typename T>
+inline const Eigen::Matrix<T,3,1> GetBasisVector(Sophus::SE3Group<T> rot, int n){ return rot.matrix().block<3,1>(0,n); }
+inline const Eigen::Vector3d GetBasisVector(Sophus::SE3d rot, int n){ return rot.matrix().block<3,1>(0,n); }
 
-enum PpmChannels
-{
-  ePpm_Accel = 3,
-  ePpm_Steering = 2
-};
+template<typename T>
+inline const Eigen::Matrix<T,3,1> GetBasisVector(Sophus::SO3Group<T> rot, int n){ return rot.matrix().block<3,1>(0,n); }
+inline const Eigen::Vector3d GetBasisVector(Sophus::SO3d rot, int n){ return rot.matrix().block<3,1>(0,n); }
 
-enum WaypointType
-{
-  eWaypoint_Normal = 1,
-  eWayoiint_FlipFront = 2
-};
-
-enum eLocType { VT_AIR, VT_GROUND, VT_REC_RAMP, VT_CIR_RAMP };
-
-// add Vector5d to eigen namespace
-#define CURVE_DIM 4 //number of dimensions for the curve
-#define ACCEL_INDEX 4 //the index of the acceleration
-#define POSE2D_DIM 4
-#define POSE_DIM 5
-
-
-#define SERVO_RANGE 500.0
-
+// Additions to the Eigen namespace for convenience.
 namespace Eigen {
 typedef Matrix<double,6,1> VectorPose3D;
 typedef Matrix<double,POSE_DIM,1> VectorPose; // defined as X,Y,Theta,Curvature,V
@@ -104,32 +60,7 @@ typedef std::vector<Eigen::Matrix4d,Eigen::aligned_allocator<Eigen::Matrix4d> > 
 typedef std::vector<Eigen::MatrixXdRowMaj,Eigen::aligned_allocator<Eigen::MatrixXdRowMaj> > MatrixXdRowMajAlignedVec;
 
 typedef std::vector<std::pair<Eigen::VectorPose,Eigen::VectorPose> > ErrorVec;
-}
-
-template<typename T>
-inline const Eigen::Matrix<T,3,1> GetBasisVector(Sophus::SE3Group<T> rot, int n){ return rot.matrix().block<3,1>(0,n); }
-inline const Eigen::Vector3d GetBasisVector(Sophus::SE3d rot, int n){ return rot.matrix().block<3,1>(0,n); }
-template<typename T>
-inline const Eigen::Matrix<T,3,1> GetBasisVector(Sophus::SO3Group<T> rot, int n){ return rot.matrix().block<3,1>(0,n); }
-inline const Eigen::Vector3d GetBasisVector(Sophus::SO3d rot, int n){ return rot.matrix().block<3,1>(0,n); }
-
-
-inline void current_utc_time(struct timespec *ts) {
-
-#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
-  clock_serv_t cclock;
-  mach_timespec_t mts;
-  host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-  clock_get_time(cclock, &mts);
-  mach_port_deallocate(mach_task_self(), cclock);
-  ts->tv_sec = mts.tv_sec;
-  ts->tv_nsec = mts.tv_nsec;
-#else
-  clock_gettime(CLOCK_REALTIME, ts);
-#endif
-
-}
-
+} // namespace Eigen
 
 namespace CarPlanner {
 
@@ -149,35 +80,8 @@ inline double SoftMinimum(double x, double y, const double multiplier = 1.0)
   return -SoftMaximum(-x,-y,multiplier);
 }
 
-
-
-// Aux Time Functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline double Tic() {
-
-  struct timeval tv;
-  gettimeofday(&tv, 0);
-  return tv.tv_sec  + 1e-6 * (tv.tv_usec);
-
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline double RealTime() {
-  return Tic();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline double Toc(double dTic) {
-  return Tic() - dTic;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-inline double TocMS(double dTic) {
-  return ( Tic() - dTic)*1000.;
-}
+inline double powi(double num, int exp) { return powi<double>(num,exp); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
@@ -194,11 +98,6 @@ inline T powi(T num, int exp) {
     return ret;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-inline double powi(double num, int exp) { return powi<double>(num,exp); }
-
-
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -313,6 +212,23 @@ inline Eigen::Matrix4d Cart2T(
   return T;
 }
 
+///////////////////////////////////////////////////////////////////////
+inline Eigen::Matrix3d Cart2T( double x, double y, double theta )
+{
+    Eigen::Matrix3d T;
+
+    T(0, 0) =  cos(theta);
+    T(0, 1) = -sin(theta);
+    T(1, 0) =  sin(theta);
+    T(1, 1) =  cos(theta);
+    T(0, 2) =  x;
+    T(1, 2) =  y;
+    T(2, 0) =  0;
+    T(2, 1) =  0;
+    T(2, 2) =  1;
+    return T;
+}
+
 ////////////////////////////////////////////////////////////////////////////
 inline Eigen::Vector3d R2Cart(const Eigen::Matrix3d& R) {
   Eigen::Vector3d rpq;
@@ -384,6 +300,34 @@ inline Eigen::Matrix3d Cart2R(const Eigen::Vector3d& rpy) {
   return Cart2R(rpy(0), rpy(1), rpy(2));
 }
 
-} // end namespace CarPlanner
+////////////////////////////////////////////////////////////////////////////
+inline double AngleWrap( double d )
+{
+    while( d > M_PI ) {
+        d -= 2*M_PI;
+    }
+    while( d < -M_PI ) {
+        d += 2*M_PI;
+    }
+    return d;
+}
 
-#endif // CARPLANNERCOMMON_H
+///////////////////////////////////////////////////////////////////////
+inline Eigen::Matrix3d	TInv( const Eigen::Matrix3d& T )
+{
+    Eigen::Matrix3d Tinv;
+    Tinv(0, 0) = T(0, 0);
+    Tinv(0, 1) = T(1, 0);
+    Tinv(1, 1) = T(1, 1);
+    Tinv(1, 0) = T(0, 1);
+    Tinv(0, 2) = -( T(0, 0) * T(0, 2) + T(1, 0) * T(1, 2) );
+    Tinv(1, 2) = -( T(0, 1) * T(0, 2) + T(1, 1) * T(1, 2) );
+    Tinv(2, 0) = 0;
+    Tinv(2, 1) = 0;
+    Tinv(2, 2) = 1;
+
+    return Tinv;
+}
+
+
+} // namespace CarPlanner

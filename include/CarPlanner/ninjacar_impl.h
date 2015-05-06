@@ -5,7 +5,7 @@
 
 namespace CarPlanner {
 
-// All that follows is for using Bullet's car model
+/// Using a Bullet car model.
 template <typename Vehicle = BulletCarModel,
           typename Planner,
           typename Controller,
@@ -31,7 +31,7 @@ public:
   }
 
   std::vector<double>
-  Control( const SE3d& target_point ) override {
+  GetControl( const SE3d& target_point ) override {
     Derived::Control(target_point, this->state_.data(), this->params_.data());
   }
 
@@ -44,7 +44,7 @@ public:
                state_.GetTheta(),
                state_.m_dCurvature,
                state_.m_dV.norm();
-    std::cout << "Check proper formatting of state to Pose." << std::endl; //crh unfinished
+    std::cout << "Check proper formatting of state to Pose for Bullet car." << std::endl; //crh unfinished
     return poseOut;
   }
 

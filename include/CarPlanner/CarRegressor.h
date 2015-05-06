@@ -1,13 +1,19 @@
-#ifndef CARREGRESSOR_H
-#define CARREGRESSOR_H
+#pragma once
 
-#include "CarPlanner/CarPlannerCommon.h"
-#include "CarPlanner/LocalPlanner.h"
-#include "CarPlanner/ThreadPool.h"
+#include <CarPlanner/LocalPlanner.h>
+#include <CarPlanner/regression_parameter.h>
+#include <CarPlanner/ninjacar.h>
+#include <CarPlanner/vehicle_state.h>
+#include <CarPlanner/control_command.h>
+
+#include <CarPlanner/utils/optim.h>
+#include <CarPlanner/utils/thread_pool.h>
 
 #define NORM_NOT_INITIALIZED -1
 #define REGRESSOR_NUM_THREADS 8
 #define REGRESSOR_NUM_WORLDS 11
+
+namespace CarPlanner {
 
 class CarRegressor
 {
@@ -67,4 +73,4 @@ private:
     std::vector<std::pair<int,int> > m_vSegmentIndices;
 };
 
-#endif // CARREGRESSOR_H
+} //namespace CarPlanner

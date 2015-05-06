@@ -1,9 +1,8 @@
-#ifndef GL_DEBUG_DRAWER_H
-#define GL_DEBUG_DRAWER_H
-
-#include "pangolin/pangolin.h"
-#include "SceneGraph/SceneGraph.h"
+#pragma once
 #include <bullet/LinearMath/btIDebugDraw.h>
+
+#include <Pangolin/pangolin.h>
+#include <SceneGraph/SceneGraph.h>
 
 class GLDebugDrawer : public btIDebugDraw
 {
@@ -18,7 +17,8 @@ public:
 
 	virtual void	drawLine(const btVector3& from,const btVector3& to,const btVector3& color);
 
-	virtual void	drawSphere (const btVector3& p, btScalar radius, const btVector3& color);
+    virtual void	drawSphere (const btVector3& p, btScalar radius, const btVector3& color);
+
 	virtual void	drawBox (const btVector3& boxMin, const btVector3& boxMax, const btVector3& color, btScalar alpha);
 
 	virtual void	drawTriangle(const btVector3& a,const btVector3& b,const btVector3& c,const btVector3& color,btScalar alpha);
@@ -34,5 +34,3 @@ public:
 	virtual int		getDebugMode() const { return m_debugMode;}
 
 };
-
-#endif  //GL_DEBUG_DRAWER_H
