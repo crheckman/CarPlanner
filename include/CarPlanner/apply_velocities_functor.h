@@ -14,7 +14,6 @@
 #include <CarPlanner/ninjacar.h>
 #include <CarPlanner/vehicle_state.h>
 #include <CarPlanner/vehicle_parameters.h>
-#include <CarPlanner/bullet/bullet_car_model.h>
 
 #define CAR_GRAVITY_COMPENSATION_COEFFICIENT 1.0
 #define CAR_STEERING_COMPENSATION_COEFFICIENT 0
