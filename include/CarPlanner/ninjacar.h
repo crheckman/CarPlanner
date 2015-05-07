@@ -25,7 +25,7 @@ protected:
 public:
   NinjaCar() {}
 
-  NinjaCar( const NinjaCar<Vehicle,Controller>& other ) :
+  NinjaCar( const NinjaCar<Vehicle>& other ) :
      params_(other.params_), state_(other.state_) {}
 
   virtual ~NinjaCar() {}
@@ -55,7 +55,7 @@ public:
 
   /// Get for Vehicle and Controller.
   /// Will simply return a string based on which we're using.
-  virtual std::string GetVehicleModel() = 0;
+  virtual std::string VehicleModel() = 0;
 
   virtual std::string GetController() = 0;
 

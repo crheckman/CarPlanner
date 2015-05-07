@@ -155,14 +155,14 @@ void BulletCarModel::PushDelayedControl(int worldId, ControlCommand& delayedComm
     std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
     pWorld->previous_commands_.push_front(delayedCommands);
     //add to the total command time
-    pWorld->m_dTotalCommandTime += delayedCommands.m_dT;
+    pWorld->timestep_otalCommandTime += delayedCommands.timestep_;
     //int s = pWorld->previous_commands_.size();
 
     //if this time is over the maximum amount, pop them off at the back
-    while(pWorld->m_dTotalCommandTime > MAX_CONTROL_DELAY &&
-              (pWorld->m_dTotalCommandTime - pWorld->previous_commands_.back().m_dT) > MAX_CONTROL_DELAY)
+    while(pWorld->timestep_otalCommandTime > MAX_CONTROL_DELAY &&
+              (pWorld->timestep_otalCommandTime - pWorld->previous_commands_.back().timestep_) > MAX_CONTROL_DELAY)
     {
-        pWorld->m_dTotalCommandTime -= pWorld->previous_commands_.back().m_dT;
+        pWorld->timestep_otalCommandTime -= pWorld->previous_commands_.back().timestep_;
         pWorld->previous_commands_.pop_back();
 
     }
@@ -175,7 +175,7 @@ void BulletCarModel::PushDelayedControl(int worldId, ControlCommand& delayedComm
 //    BulletWorldInstance* pWorld = GetWorldInstance(index);
 //    //update the parameter vector
 //    for(int ii = 0 ; ii < pWorld->m_vLearningParameters.size() ; ii++) {
-//        pWorld->m_vLearningParameters[ii].vel_w_dot_al = pWorld->m_Parameters[pWorld->m_vLearningParameters[ii].m_nKey];
+//        pWorld->m_vLearningParameters[ii].val_ = pWorld->m_Parameters[pWorld->m_vLearningParameters[ii].key_];
 //    }
 //    return pWorld->m_vLearningParameters;
 //}
@@ -209,7 +209,7 @@ void BulletCarModel::_GetDelayedControl(int worldId, double timeDelay, ControlCo
     double currentDelay = 0;
     CommandList::iterator it = previousCommands.begin();
     ControlCommand* pCurrentCommand = &(*it);
-    //currentDelay = (*it).m_dT;
+    //currentDelay = (*it).timestep_;
 
 
     int count = 0;
@@ -217,22 +217,22 @@ void BulletCarModel::_GetDelayedControl(int worldId, double timeDelay, ControlCo
         it++; //move to the first element
         for(; it != previousCommands.end() ; it++) {
             count++;
-            if( currentDelay + (*it).m_dT >= timeDelay ) {
+            if( currentDelay + (*it).timestep_ >= timeDelay ) {
 
                 //interpolate between the current and next commands
-                double r2 = (timeDelay - currentDelay)/(*it).m_dT;
+                double r2 = (timeDelay - currentDelay)/(*it).timestep_;
                 double r1 = 1-r2;
 
                 delayedCommands.force_ = r1*pCurrentCommand->force_ + r2*(*it).force_;
                 delayedCommands.curvature_ = r1*pCurrentCommand->curvature_ + r2*(*it).curvature_;
-                delayedCommands.m_dPhi = r1*pCurrentCommand->m_dPhi + r2*(*it).m_dPhi;
+                delayedCommands.phi_ = r1*pCurrentCommand->phi_ + r2*(*it).phi_;
                 delayedCommands.torque_ = r1*pCurrentCommand->torque_ + r2*(*it).torque_;
 
                 it++;
                 return;
             }else {
                 pCurrentCommand = &(*it);
-                currentDelay += pCurrentCommand->m_dT;
+                currentDelay += pCurrentCommand->timestep_;
 
                 if(currentDelay == timeDelay) {
                     delayedCommands = *pCurrentCommand;
@@ -247,7 +247,7 @@ void BulletCarModel::_GetDelayedControl(int worldId, double timeDelay, ControlCo
         dout("Command history list size == 0. Passing empty command");
         delayedCommands.force_ = pWorld->m_Parameters[CarParameters::AccelOffset]*SERVO_RANGE;
         delayedCommands.curvature_ = 0;
-        delayedCommands.m_dPhi = pWorld->m_Parameters[CarParameters::SteeringOffset]*SERVO_RANGE;
+        delayedCommands.phi_ = pWorld->m_Parameters[CarParameters::SteeringOffset]*SERVO_RANGE;
         delayedCommands.torque_ << 0,0,0;
     }
 
@@ -297,9 +297,9 @@ void BulletCarModel::UpdateParameters(const std::vector<RegressionParameter>& vN
     std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
     //update the parameter map and learning parameter list with the new params
     for(size_t ii = 0; ii < vNewParams.size() ; ii++) {
-        //pWorld->m_vLearningParameters[ii].vel_w_dot_al = vNewParams[ii].vel_w_dot_al;
-        pWorld->m_Parameters[vNewParams[ii].m_nKey] = vNewParams[ii].vel_w_dot_al;
-        //dout("Updating parameter with key " << vNewParams[ii].m_nKey << " to " << pWorld->m_Parameters[vNewParams[ii].m_nKey]);
+        //pWorld->m_vLearningParameters[ii].val_ = vNewParams[ii].val_;
+        pWorld->m_Parameters[vNewParams[ii].key_] = vNewParams[ii].val_;
+        //dout("Updating parameter with key " << vNewParams[ii].key_ << " to " << pWorld->m_Parameters[vNewParams[ii].key_]);
     }
     _InternalUpdateParameters(pWorld);
 }
@@ -366,9 +366,9 @@ double BulletCarModel::GetTotalWheelFriction(int worldId, double dt)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-std::pair<double,double> BulletCarModel::GetSteeringRequiredAndMaxForce(const int nWorldId, const int nWheelId, const double dPhi, const double dt)
+std::pair<double,double> BulletCarModel::GetSteeringRequiredAndMaxForce(const int world_id, const int nWheelId, const double dPhi, const double dt)
 {
-    BulletWorldInstance* pWorld = GetWorldInstance(nWorldId);
+    BulletWorldInstance* pWorld = GetWorldInstance(world_id);
     return pWorld->m_pVehicle->GetSteeringRequiredAndMaxForce(nWheelId,dPhi,dt);
 }
 
@@ -427,7 +427,7 @@ void BulletCarModel::UpdateState(  const int& worldId,
     }
 
     delayedCommands = command;
-    delayedCommands.m_dT = dT;
+    delayedCommands.timestep_ = dT;
     if(bNoDelay == false){
         PushDelayedControl(worldId,delayedCommands);
         //get the delayed command
@@ -435,7 +435,7 @@ void BulletCarModel::UpdateState(  const int& worldId,
     }
     //get the delayed commands for execution and remove the offsets
     double dCorrectedForce = delayedCommands.force_- pWorld->m_Parameters[CarParameters::AccelOffset]*SERVO_RANGE;
-    double dCorrectedPhi = delayedCommands.m_dPhi-pWorld->m_Parameters[CarParameters::SteeringOffset]*SERVO_RANGE;
+    double dCorrectedPhi = delayedCommands.phi_-pWorld->m_Parameters[CarParameters::SteeringOffset]*SERVO_RANGE;
 
     //D.C. motor equations:
     //torque = Pwm*Ts - slope*V
@@ -571,9 +571,9 @@ void BulletCarModel::SetStateNoReset( BulletWorldInstance *pWorld , const Sophus
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void BulletCarModel::SetState( int nWorldId,  const VehicleState& state )
+void BulletCarModel::SetState( int world_id,  const VehicleState& state )
 {
-    BulletWorldInstance *pWorld = GetWorldInstance(nWorldId);
+    BulletWorldInstance *pWorld = GetWorldInstance(world_id);
     std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
     //load the backup onto the vehicle
     pWorld->m_vehicleBackup.LoadState(pWorld->m_pVehicle);
@@ -705,14 +705,14 @@ void BulletCarModel::_InitVehicle(BulletWorldInstance* pWorld, std::map<int, dou
     bool bIsFrontWheel=true;
 
     btVector3 connectionPointCS0(pWorld->m_Parameters[CarParameters::WheelBase]/2,pWorld->m_Parameters[CarParameters::Width]/2-(0.3*pWorld->m_Parameters[CarParameters::WheelWidth]), pWorld->m_Parameters[CarParameters::SuspConnectionHeight]);
-    pWorld->m_pVehicle->addWheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
+    pWorld->m_pVehicle->adomegaheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
     connectionPointCS0 = btVector3(pWorld->m_Parameters[CarParameters::WheelBase]/2, -pWorld->m_Parameters[CarParameters::Width]/2+(0.3*pWorld->m_Parameters[CarParameters::WheelWidth]),pWorld->m_Parameters[CarParameters::SuspConnectionHeight]);
-    pWorld->m_pVehicle->addWheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
+    pWorld->m_pVehicle->adomegaheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
     connectionPointCS0 = btVector3(-pWorld->m_Parameters[CarParameters::WheelBase]/2,-pWorld->m_Parameters[CarParameters::Width]/2+(0.3*pWorld->m_Parameters[CarParameters::WheelWidth]), pWorld->m_Parameters[CarParameters::SuspConnectionHeight]);
     bIsFrontWheel = false;
-    pWorld->m_pVehicle->addWheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
+    pWorld->m_pVehicle->adomegaheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
     connectionPointCS0 = btVector3(-pWorld->m_Parameters[CarParameters::WheelBase]/2,pWorld->m_Parameters[CarParameters::Width]/2-(0.3*pWorld->m_Parameters[CarParameters::WheelWidth]), pWorld->m_Parameters[CarParameters::SuspConnectionHeight]);
-    pWorld->m_pVehicle->addWheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
+    pWorld->m_pVehicle->adomegaheel(connectionPointCS0,vWheelDirectionCS0,vWheelAxleCS,pWorld->m_Parameters[CarParameters::SuspRestLength],pWorld->m_Parameters[CarParameters::WheelRadius],pWorld->m_Tuning,bIsFrontWheel);
 
     for (size_t i=0;i<pWorld->m_pVehicle->getNumWheels();i++)
     {
@@ -762,7 +762,7 @@ void BulletCarModel::ResetCommandHistory(int worldId)
     BulletWorldInstance *pWorld = GetWorldInstance(worldId);
     std::unique_lock<std::mutex>lock(*pWorld, std::try_to_lock);
     pWorld->previous_commands_.clear();
-    pWorld->m_dTotalCommandTime = 0;
+    pWorld->timestep_otalCommandTime = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -786,9 +786,9 @@ void BulletCarModel::SetCommandHistory(const int& worldId, const CommandList &pr
     BulletWorldInstance *pWorld = GetWorldInstance(worldId);
     std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
     //find out the total time of the commands
-    pWorld->m_dTotalCommandTime = 0;
+    pWorld->timestep_otalCommandTime = 0;
     for(const ControlCommand& command : previousCommands ){
-        pWorld->m_dTotalCommandTime += command.m_dT;
+        pWorld->timestep_otalCommandTime += command.timestep_;
     }
 
     pWorld->previous_commands_ = previousCommands;

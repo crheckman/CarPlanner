@@ -6,7 +6,7 @@
 class ControlCommand
 {
 public:
-    ControlCommand(): force_(0), curvature_(0), m_dT(0),m_dPhi(0), torque_(0,0,0),timestamp_(0)
+    ControlCommand(): force_(0), curvature_(0), timestep_(0),phi_(0), torque_(0,0,0),timestamp_(0)
     {
 
     }
@@ -17,15 +17,15 @@ public:
         //m_dControlAccel = accel;
         curvature_ = curvature;
         torque_ = torques;
-        m_dT = dt;
-        m_dPhi = dPhi;
+        timestep_ = dt;
+        phi_ = dPhi;
     }
 
     //double m_dControlAccel;
     double force_;
     double curvature_;
-    double m_dT;
-    double m_dPhi;
+    double timestep_;
+    double phi_;
     Eigen::Vector3d torque_;
     double timestamp_;
 

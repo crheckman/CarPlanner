@@ -15,7 +15,7 @@ BezierBoundarySolver::BezierBoundarySolver()
 
 
 ///////////////////////////////////////////////////////////////////////////////
-double BezierBoundarySolver::GetCurvature(const BoundaryProblem *pProblem,
+double BezierBoundarySolver::GetCurvature(const boundary_problem *pProblem,
                                           double dist)
 {
     BezierBoundaryProblem* bezierProblem = (BezierBoundaryProblem*)pProblem;
@@ -59,9 +59,9 @@ void BezierBoundarySolver::_Get5thOrderBezier(BezierBoundaryProblem *pProblem,
     pProblem->m_xVals = Eigen::VectorXd(n+1);
     pProblem->m_yVals = Eigen::VectorXd(n+1);
 
-    const double kInit = pProblem->m_dStartPose[3] / pProblem->m_dAggressiveness;
-    const double tGoal = pProblem->m_dGoalPose[2];
-    const double kGoal = pProblem->m_dGoalPose[3] / pProblem->m_dAggressiveness;
+    const double kInit = pProblem->start_pose_[3] / pProblem->aggressiveness_;
+    const double tGoal = pProblem->m_goal_pose_[2];
+    const double kGoal = pProblem->m_goal_pose_[3] / pProblem->aggressiveness_;
     //dout("Getting b-curve with goal curvature of " << kGoal);
 
     //here we're assuming that tInit is always 0
@@ -85,8 +85,8 @@ void BezierBoundarySolver::_Get5thOrderBezier(BezierBoundaryProblem *pProblem,
     pProblem->m_yVals[2] = pProblem->m_yVals[1] + h;
 
     //and now set the end points
-    pProblem->m_xVals[5] = pProblem->m_dGoalPose[0];
-    pProblem->m_yVals[5] = pProblem->m_dGoalPose[1];
+    pProblem->m_xVals[5] = pProblem->m_goal_pose_[0];
+    pProblem->m_yVals[5] = pProblem->m_goal_pose_[1];
 
     //calculate the offset
     Eigen::Vector2d offset(-a2,0);
@@ -104,13 +104,13 @@ void BezierBoundarySolver::_Get5thOrderBezier(BezierBoundaryProblem *pProblem,
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void BezierBoundarySolver::Solve(BoundaryProblem *pProblem)
+void BezierBoundarySolver::Solve(boundary_problem *pProblem)
 {
     //double time = Tic();
     BezierBoundaryProblem* bezierProblem = (BezierBoundaryProblem*)pProblem;
 
     //find the distance between the start and finish
-    double dist = sqrt(powi(pProblem->m_dGoalPose[0],2) + powi(pProblem->m_dGoalPose[1],2));
+    double dist = sqrt(powi(pProblem->m_goal_pose_[0],2) + powi(pProblem->m_goal_pose_[1],2));
     bezierProblem->m_dSegLength = dist/g_nAggressivenessDivisor;
     //first get the guess bezier
     if(bezierProblem->m_bSolved == false){
@@ -134,7 +134,7 @@ void BezierBoundarySolver::Solve(BoundaryProblem *pProblem)
     //indicate that the problem has been solved
     bezierProblem->m_bSolved = true;
 
-    //dout("2D solve with goal " << bezierProblem->m_dGoalPose.transpose() <<" took " << Toc(time) << " seconds.");
+    //dout("2D solve with goal " << bezierProblem->m_goal_pose_.transpose() <<" took " << Toc(time) << " seconds.");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -220,7 +220,7 @@ void BezierBoundarySolver::_Sample5thOrderBezier(BezierBoundaryProblem* pProblem
         //and now calculate the curvature
         double sq = sqrt(powi(dX*dX + dY*dY,3));  //(dX^2+dY^2)^(3/2)
         double curvature = (dX*ddY-dY*ddX)/sq;
-        pProblem->m_vCurvatures.push_back(curvature*pProblem->m_dAggressiveness);  //k = (dX*ddY - dY*ddX)/((dX^2 + dY^2)^(3/2))
+        pProblem->m_vCurvatures.push_back(curvature*pProblem->aggressiveness_);  //k = (dX*ddY - dY*ddX)/((dX^2 + dY^2)^(3/2))
         pProblem->m_vDistances.push_back(pProblem->m_dDistance);
 
         t += dt;

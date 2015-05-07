@@ -80,17 +80,17 @@ void CarParameters::PrintAllParams(const std::map<int, double> &map)
 }
 
 ////////////////////////////////////////////////////////////////
-RegressionParameter::RegressionParameter(std::map<int, double>& map, int nKey, BulletCarModel* pModel/* = NULL*/):
-    vel_w_dot_al(map[nKey]),
-    m_nKey(nKey),
-    m_sName(CarParameters::Names[nKey]),
-    m_pModel(pModel){}
+RegressionParameter::RegressionParameter(std::map<int, double>& map, int nKey, BulletCarModel* vehicle/* = NULL*/):
+    val_(map[nKey]),
+    key_(nKey),
+    name_(CarParameters::Names[nKey]),
+    vehicle_(vehicle){}
 
 ////////////////////////////////////////////////////////////////
 bool RegressionParameter::AreEqual(const std::vector<RegressionParameter>& params1, const std::vector<RegressionParameter>& params2)
 {
     for(size_t ii = 0 ; ii < params1.size() ; ii++) {
-        if(params1[ii].vel_w_dot_al != params2[ii].vel_w_dot_al){
+        if(params1[ii].val_ != params2[ii].val_){
             return false;
         }
     }
@@ -100,7 +100,7 @@ bool RegressionParameter::AreEqual(const std::vector<RegressionParameter>& param
 ////////////////////////////////////////////////////////////////
 void RegressionParameter::UpdateValue(const double newVal)
 {
-    vel_w_dot_al = newVal;
+    val_ = newVal;
     std::vector<RegressionParameter> params = {*this};
-    m_pModel->UpdateParameters(params);
+    vehicle_->UpdateParameters(params);
 }

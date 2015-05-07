@@ -8,22 +8,22 @@ struct RegressionParameter
 {
     RegressionParameter(std::map<int,  double>& map,
                         int nKey,
-                        std::shared_ptr<NinjaCar<Vehicle,Controller,Planner>> pModel = NULL);
+                        std::shared_ptr<NinjaCar<Vehicle>> vehicle = NULL);
 
     static bool AreEqual(const std::vector<RegressionParameter>& params1,
                          const std::vector<RegressionParameter>& params2);
     void UpdateValue(const double newVal);
-    double vel_w_dot_al;
-    int m_nKey;
-    std::string m_sName;
-    std::shared_ptr<NinjaCar<Vehicle,Controller,Planner>> m_pModel;
+    double val_;
+    int key_;
+    std::string name_;
+    std::shared_ptr<NinjaCar<Vehicle>> vehicle_;
 };
 
 /// Redefinition of redirection operators.
 inline std::ostream& operator<<( std::ostream& Stream,
                                  RegressionParameter& parameter )
 {
-    Stream << parameter.vel_w_dot_al;
+    Stream << parameter.val_;
     return Stream;
 }
 
@@ -42,8 +42,8 @@ inline std::ostream& operator<<( std::ostream& Stream,
     Stream << "[ ";
 
     for( unsigned int ii = 0; ii < params.size(); ii++ ) {
-        Stream << params[ii].m_sName << ":";
-        Stream << params[ii].vel_w_dot_al;
+        Stream << params[ii].name_ << ":";
+        Stream << params[ii].val_;
         Stream << ", ";
     }
 

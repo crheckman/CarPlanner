@@ -8,18 +8,19 @@
  * of this software for any purpose.
  * It is provided "as is" without express or implied warranty.
 */
-#ifndef RAYCASTVEHICLE_H
-#define RAYCASTVEHICLE_H
+#pragma once
 
-#include "BulletDynamics/Dynamics/btRigidBody.h"
-#include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
-#include "BulletDynamics/Vehicle/btVehicleRaycaster.h"
-class btDynamicsWorld;
-#include "LinearMath/btAlignedObjectArray.h"
-#include "WheelInfo.h"
-#include "BulletDynamics/Dynamics/btActionInterface.h"
 #include <iostream>
-#include "BulletDynamics/ConstraintSolver/btConstraintSolver.h"
+#include <BulletDynamics/Dynamics/btRigidBody.h>
+#include <BulletDynamics/ConstraintSolver/btTypedConstraint.h>
+#include <BulletDynamics/Vehicle/btVehicleRaycaster.h>
+#include <BulletDynamics/Dynamics/btActionInterface.h>
+#include <BulletDynamics/ConstraintSolver/btConstraintSolver.h>
+
+class btDynamicsWorld;
+#include <LinearMath/btAlignedObjectArray.h>
+#include <CarPlanner/bullet/wheel_info.h>
+
 
 
 class btVehicleTuning;
@@ -35,7 +36,11 @@ struct btWheelContactPoint
     btScalar	m_maxImpulse;
 
 
-    btWheelContactPoint(btRigidBody* body0,btRigidBody* body1,const btVector3& frictionPosWorld,const btVector3& frictionDirectionWorld, btScalar maxImpulse)
+    btWheelContactPoint(btRigidBody* body0,
+                        btRigidBody* body1,
+                        const btVector3& frictionPosWorld,
+                        const btVector3& frictionDirectionWorld,
+                        btScalar maxImpulse)
         :m_body0(body0),
         m_body1(body1),
         m_frictionPositionWorld(frictionPosWorld),
@@ -54,7 +59,7 @@ struct btWheelContactPoint
 class RaycastVehicle : public btActionInterface
 {
 
-        btAlignedObjectArray<btVector3>	m_forwardWS;
+        btAlignedObjectArray<btVector3>	m_forwaromegaS;
         btAlignedObjectArray<btVector3>	m_axle;
         btAlignedObjectArray<btScalar>	m_forwardImpulse;
         btAlignedObjectArray<btScalar>	m_sideImpulse;
@@ -102,24 +107,27 @@ private:
 
     btRigidBody* m_chassisBody;
 
-    int m_indexRightAxis;
-    int m_indexUpAxis;
-    int	m_indexForwardAxis;
+    int index_right_axis_;
+    int index_up_axis_;
+    int	index_forward_axis_;
 
-    btScalar m_dTotalGravityForce;
+    btScalar timestep_otalGravityForce;
 
     void defaultInit(const btVehicleTuning& tuning);
     void _SetSteeringValue(btScalar steering,int wheel);
     btScalar _GetSteeringValue(int wheel) const;
 
 public:
-    btScalar GetTotalGravityForce() { return m_dTotalGravityForce; }
+    btScalar GetTotalGravityForce() { return timestep_otalGravityForce; }
     RaycastVehicle();
     RaycastVehicle(RaycastVehicle & vehicle);
 
 
     //constructor to create a car from an existing rigidbody
-    RaycastVehicle(const btVehicleTuning& tuning, btRigidBody* chassis,	btVehicleRaycaster* raycaster , btContactSolverInfo *pSolverInfo);
+    RaycastVehicle(const btVehicleTuning& tuning,
+                   btRigidBody* chassis,
+                   btVehicleRaycaster* raycaster,
+                   btContactSolverInfo *pSolverInfo);
     virtual ~RaycastVehicle() ;
 
 
@@ -144,7 +152,7 @@ public:
     btScalar CalculateMaxFrictionImpulse(int wheelnum, btScalar timeStep, bool& bDynamic);
     void updateWheelTransform(const int nWheelIndex, bool bInterpolatedTransform = true );
 //	void	setRaycastWheelInfo( int wheelIndex , bool isInContact, const btVector3& hitPoint, const btVector3& hitNormal,btScalar depth);
-    WheelInfo& addWheel( const btVector3& connectionPointCS0,
+    WheelInfo& adomegaheel( const btVector3& connectionPointCS0,
                          const btVector3& wheelDirectionCS0,
                          const btVector3& wheelAxleCS,
                          btScalar suspensionRestLength,
@@ -162,9 +170,9 @@ public:
     virtual void updateFriction(btScalar	timeStep);
     inline btRigidBody* getRigidBody() { return m_chassisBody; }
     const btRigidBody* getRigidBody() const{ return m_chassisBody; }
-    inline int	getRightAxis() const { return m_indexRightAxis; }
-    inline int getUpAxis() const { return m_indexUpAxis; }
-    inline int getForwardAxis() const { return m_indexForwardAxis; }
+    inline int	getRightAxis() const { return index_right_axis_; }
+    inline int getUpAxis() const { return index_up_axis_; }
+    inline int getForwardAxis() const { return index_forward_axis_; }
     ///Velocity of vehicle (positive if velocity vector has same direction as foward vector)
     btScalar	getCurrentSpeedKmHour() const { return m_currentVehicleSpeedKmHour; }
     ///backwards compatibility
@@ -185,19 +193,19 @@ public:
     {
         const btTransform& chassisTrans = getChassisWorldTransform();
 
-        btVector3 forwardW (
-              chassisTrans.getBasis()[0][m_indexForwardAxis],
-              chassisTrans.getBasis()[1][m_indexForwardAxis],
-              chassisTrans.getBasis()[2][m_indexForwardAxis]);
+        btVector3 forwaromega (
+              chassisTrans.getBasis()[0][index_forward_axis_],
+              chassisTrans.getBasis()[1][index_forward_axis_],
+              chassisTrans.getBasis()[2][index_forward_axis_]);
 
-        return forwardW;
+        return forwaromega;
     }
 
     virtual void	setCoordinateSystem(int rightIndex,int upIndex,int forwardIndex)
     {
-        m_indexRightAxis = rightIndex;
-        m_indexUpAxis = upIndex;
-        m_indexForwardAxis = forwardIndex;
+        index_right_axis_ = rightIndex;
+        index_up_axis_ = upIndex;
+        index_forward_axis_ = forwardIndex;
     }
     btScalar resolveSingleCollision(btRigidBody *body1, btCollisionObject *colObj2, const btVector3 &contactPositionWorld, const btVector3 &contactNormalOnB, const btContactSolverInfo &solverInfo, btScalar distance);
 };
@@ -214,7 +222,4 @@ public:
     virtual void* castRay(const btVector3& from,const btVector3& to, btVehicleRaycasterResult& result);
 
 };
-
-
-#endif //RAYCASTVEHICLE_H
 

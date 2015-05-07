@@ -83,12 +83,12 @@ public:
         return m_vCgOffset; 
     }
     
-    Eigen::Vector6d GetWorldPose() {
-        return m_WorldPose;
+    Eigen::Vector6d GetWorlpose() {
+        return m_Worlpose;
     }
     
-    void SetWorldPose(Eigen::Vector6d pose) {
-        m_WorldPose = pose;
+    void SetWorlpose(Eigen::Vector6d pose) {
+        m_Worlpose = pose;
     }
     
     void SetInContact(bool bInContact) {
@@ -139,7 +139,7 @@ private:
 //    Eigen::Vector6d m_vCgOffset;
     Eigen::Matrix4d m_vCgOffset;
     Eigen::Matrix4d m_vRelativeOffset;
-    Eigen::Vector6d m_WorldPose;
+    Eigen::Vector6d m_Worlpose;
     double m_dK;
     double m_dD;
     double m_dLastTime;

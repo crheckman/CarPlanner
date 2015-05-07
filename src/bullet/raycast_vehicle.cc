@@ -34,9 +34,9 @@ RaycastVehicle::RaycastVehicle(const btVehicleTuning& tuning,btRigidBody* chassi
     :m_vehicleRaycaster(raycaster), m_pSolverInfo(pSolverInfo),m_pitchControl(btScalar(0.))
 {
     m_chassisBody = chassis;
-    m_indexRightAxis = 0;
-    m_indexUpAxis = 2;
-    m_indexForwardAxis = 1;
+    index_right_axis_ = 0;
+    index_up_axis_ = 2;
+    index_forward_axis_ = 1;
     defaultInit(tuning);
     m_dAckermanSteering = 0;
 }
@@ -97,10 +97,10 @@ RaycastVehicle::RaycastVehicle(RaycastVehicle & vehicle)
     m_currentVehicleSpeedKmHour = vehicle.m_currentVehicleSpeedKmHour;
     m_damping = vehicle.m_damping;
     m_forwardImpulse = vehicle.m_forwardImpulse;
-    m_forwardWS = vehicle.m_forwardWS;
-    m_indexForwardAxis = vehicle.m_indexForwardAxis;
-    m_indexRightAxis = vehicle.m_indexRightAxis;
-    m_indexUpAxis = vehicle.m_indexUpAxis;
+    m_forwaromegaS = vehicle.m_forwaromegaS;
+    index_forward_axis_ = vehicle.index_forward_axis_;
+    index_right_axis_ = vehicle.index_right_axis_;
+    index_up_axis_ = vehicle.index_up_axis_;
     m_pitchControl = vehicle.m_pitchControl;
     m_sideImpulse = vehicle.m_sideImpulse;
     m_steeringValue = vehicle.m_steeringValue;
@@ -128,7 +128,7 @@ RaycastVehicle::~RaycastVehicle()
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
-WheelInfo&	RaycastVehicle::addWheel( const btVector3& connectionPointCS, const btVector3& wheelDirectionCS0,const btVector3& wheelAxleCS, btScalar suspensionRestLength, btScalar wheelRadius,const btVehicleTuning& tuning, bool isFrontWheel)
+WheelInfo&	RaycastVehicle::adomegaheel( const btVector3& connectionPointCS, const btVector3& wheelDirectionCS0,const btVector3& wheelAxleCS, btScalar suspensionRestLength, btScalar wheelRadius,const btVehicleTuning& tuning, bool isFrontWheel)
 {
     WheelInfoConstructionInfo ci;
 
@@ -336,12 +336,12 @@ void RaycastVehicle::updateVehicle( btScalar step )
 
     const btTransform& chassisTrans = getChassisWorldTransform();
 
-    btVector3 forwardW (
-        chassisTrans.getBasis()[0][m_indexForwardAxis],
-        chassisTrans.getBasis()[1][m_indexForwardAxis],
-        chassisTrans.getBasis()[2][m_indexForwardAxis]);
+    btVector3 forwaromega (
+        chassisTrans.getBasis()[0][index_forward_axis_],
+        chassisTrans.getBasis()[1][index_forward_axis_],
+        chassisTrans.getBasis()[2][index_forward_axis_]);
 
-    if (forwardW.dot(getRigidBody()->getLinearVelocity()) < btScalar(0.)){
+    if (forwaromega.dot(getRigidBody()->getLinearVelocity()) < btScalar(0.)){
         m_currentVehicleSpeedKmHour *= btScalar(-1.);
     }
 
@@ -375,7 +375,7 @@ void RaycastVehicle::updateVehicle( btScalar step )
     }
 
     //get the total gravity force before applying the friction
-    m_dTotalGravityForce = (getRigidBody()->getWorldTransform().getRotation() * getRigidBody()->getTotalForce()).x();
+    timestep_otalGravityForce = (getRigidBody()->getWorldTransform().getRotation() * getRigidBody()->getTotalForce()).x();
 
     updateFriction( step);
 
@@ -388,9 +388,9 @@ void RaycastVehicle::updateVehicle( btScalar step )
             const btTransform&	chassisWorldTransform = getChassisWorldTransform();
 
             btVector3 fwd (
-                chassisWorldTransform.getBasis()[0][m_indexForwardAxis],
-                chassisWorldTransform.getBasis()[1][m_indexForwardAxis],
-                chassisWorldTransform.getBasis()[2][m_indexForwardAxis]);
+                chassisWorldTransform.getBasis()[0][index_forward_axis_],
+                chassisWorldTransform.getBasis()[1][index_forward_axis_],
+                chassisWorldTransform.getBasis()[2][index_forward_axis_]);
 
             btScalar proj = fwd.dot(wheel.m_raycastInfo.m_contactNormalWS);
             fwd -= wheel.m_raycastInfo.m_contactNormalWS * proj;
@@ -582,7 +582,7 @@ void	RaycastVehicle::updateFriction(btScalar	timeStep)
         if (!numWheel)
             return;
 
-        m_forwardWS.resize(numWheel);
+        m_forwaromegaS.resize(numWheel);
         m_axle.resize(numWheel);
         m_forwardImpulse.resize(numWheel);
         m_sideImpulse.resize(numWheel);
@@ -614,17 +614,17 @@ void	RaycastVehicle::updateFriction(btScalar	timeStep)
 
                     btMatrix3x3 wheelBasis0 = wheelTrans.getBasis();
                     m_axle[i] = btVector3(
-                        wheelBasis0[0][m_indexRightAxis],
-                        wheelBasis0[1][m_indexRightAxis],
-                        wheelBasis0[2][m_indexRightAxis]);
+                        wheelBasis0[0][index_right_axis_],
+                        wheelBasis0[1][index_right_axis_],
+                        wheelBasis0[2][index_right_axis_]);
 
                     const btVector3& surfNormalWS = wheelInfo.m_raycastInfo.m_contactNormalWS;
                     btScalar proj = m_axle[i].dot(surfNormalWS);
                     m_axle[i] -= surfNormalWS * proj;
                     m_axle[i] = m_axle[i].normalize();
 
-                    m_forwardWS[i] = surfNormalWS.cross(m_axle[i]);
-                    m_forwardWS[i].normalize();
+                    m_forwaromegaS[i] = surfNormalWS.cross(m_axle[i]);
+                    m_forwaromegaS[i].normalize();
 
 
                     resolveSingleBilateral(*m_chassisBody, wheelInfo.m_raycastInfo.m_contactPointWS,
@@ -634,7 +634,7 @@ void	RaycastVehicle::updateFriction(btScalar	timeStep)
                     //calculate the slip angle
                     btVector3 rel_pos1 = wheelInfo.m_raycastInfo.m_contactPointWS - m_chassisBody->getCenterOfMassPosition();
                     btVector3 vel_dir = m_chassisBody->getVelocityInLocalPoint(rel_pos1).normalized();
-                    double slip = fabs(acos(fabs(vel_dir.dot(m_forwardWS[i]))));
+                    double slip = fabs(acos(fabs(vel_dir.dot(m_forwaromegaS[i]))));
                     //dout("Current slip angle for wheel " << i << " is " << slip*180.0/M_PI << " degrees.");
 
 
@@ -670,7 +670,7 @@ void	RaycastVehicle::updateFriction(btScalar	timeStep)
                 //calculate the friction force based on whether we are moving or not
 
                 btScalar maxDynamicFrictionImpulse = timeStep * wheelInfo.m_wheelsSuspensionForce * m_dFrictionDynamic;
-                btWheelContactPoint contactPt(m_chassisBody,groundObject,wheelInfo.m_raycastInfo.m_contactPointWS,m_forwardWS[wheel],maxDynamicFrictionImpulse);
+                btWheelContactPoint contactPt(m_chassisBody,groundObject,wheelInfo.m_raycastInfo.m_contactPointWS,m_forwaromegaS[wheel],maxDynamicFrictionImpulse);
                 btScalar dynamicFrictionImpulse = CalcRollingFriction(contactPt);
                 //apply both the engine and the dynamic friction impulses
                 rollingFriction = dynamicFrictionImpulse + engineImpulse;
@@ -683,7 +683,7 @@ void	RaycastVehicle::updateFriction(btScalar	timeStep)
 //                {
 //                    btScalar defaultRollingFrictionImpulse = 0.f;
 //                    btScalar maxImpulse = wheelInfo.m_brake ? wheelInfo.m_brake : defaultRollingFrictionImpulse;
-//                    btWheelContactPoint contactPt(m_chassisBody,groundObject,wheelInfo.m_raycastInfo.m_contactPointWS,m_forwardWS[wheel],maxImpulse);
+//                    btWheelContactPoint contactPt(m_chassisBody,groundObject,wheelInfo.m_raycastInfo.m_contactPointWS,m_forwaromegaS[wheel],maxImpulse);
 //                    rollingFriction = CalcRollingFriction(contactPt);
 //                }
             }
@@ -746,7 +746,7 @@ void	RaycastVehicle::updateFriction(btScalar	timeStep)
 
             if (m_forwardImpulse[wheel] != btScalar(0.))
             {
-                m_chassisBody->applyImpulse(m_forwardWS[wheel]*(m_forwardImpulse[wheel]),rel_pos);
+                m_chassisBody->applyImpulse(m_forwaromegaS[wheel]*(m_forwardImpulse[wheel]),rel_pos);
             }
             if (m_sideImpulse[wheel] != btScalar(0.) ){
                 class btRigidBody* groundObject = (class btRigidBody*) m_wheelInfo[wheel].m_raycastInfo.m_groundObject;
@@ -760,7 +760,7 @@ void	RaycastVehicle::updateFriction(btScalar	timeStep)
                 //roll influence hack -- this effectively translates the side force imparted on the wheels
                 //up towards the CG of the car to prevent rolling. This should be set to high values (m_rollInfluence ~= 1)
                 //for accurate physical simulation
-                rel_pos[m_indexUpAxis] *= wheelInfo.m_rollInfluence;
+                rel_pos[index_up_axis_] *= wheelInfo.m_rollInfluence;
                 m_chassisBody->applyImpulse(sideImp,rel_pos);
 
                 //apply friction impulse on the ground
@@ -782,14 +782,14 @@ std::pair<btScalar,btScalar> RaycastVehicle::GetSteeringRequiredAndMaxForce(cons
 
     //now calculate the required force and the maximum force
     class btRigidBody* groundObject = (class btRigidBody*) wheelInfo.m_raycastInfo.m_groundObject;
-    if(groundObject && nWheelId < m_forwardWS.size() ){
+    if(groundObject && nWheelId < m_forwaromegaS.size() ){
         const btTransform& wheelTrans = getWheelTransformWS( nWheelId );
 
         btMatrix3x3 wheelBasis0 = wheelTrans.getBasis();
         btVector3 axle = btVector3(
-            wheelBasis0[0][m_indexRightAxis],
-            wheelBasis0[1][m_indexRightAxis],
-            wheelBasis0[2][m_indexRightAxis]);
+            wheelBasis0[0][index_right_axis_],
+            wheelBasis0[1][index_right_axis_],
+            wheelBasis0[2][index_right_axis_]);
 
         const btVector3& surfNormalWS = wheelInfo.m_raycastInfo.m_contactNormalWS;
         btScalar proj = axle.dot(surfNormalWS);
@@ -804,7 +804,7 @@ std::pair<btScalar,btScalar> RaycastVehicle::GetSteeringRequiredAndMaxForce(cons
         //now calculate the maximum sideways impulse
         btVector3 rel_pos1 = wheelInfo.m_raycastInfo.m_contactPointWS - m_chassisBody->getCenterOfMassPosition();
         btVector3 vel_dir = m_chassisBody->getVelocityInLocalPoint(rel_pos1).normalized();
-        double slip = fabs(acos(fabs(vel_dir.dot(m_forwardWS[nWheelId]))));
+        double slip = fabs(acos(fabs(vel_dir.dot(m_forwaromegaS[nWheelId]))));
         //now calculate the maximum sideways impulse
         //double dMaxSideImpulse = dt*wheelInfo.m_wheelsSuspensionForce*m_dSideFriction + dt*m_dSlipCoefficient*slip/fabs(cos(wheelInfo.m_steering));
 
@@ -831,9 +831,9 @@ btScalar RaycastVehicle::CalculateMaxFrictionImpulse(int wheelnum, btScalar time
     class btRigidBody* groundObject = (class btRigidBody*) wheelInfo.m_raycastInfo.m_groundObject;
 
     //calculate the friction force based on whether we are moving or not
-    if(groundObject && m_forwardWS.size() != 0 ){
+    if(groundObject && m_forwaromegaS.size() != 0 ){
             btScalar maxDynamicFrictionImpulse = timeStep * wheelInfo.m_wheelsSuspensionForce * m_dFrictionDynamic;
-            btWheelContactPoint contactPt(m_chassisBody,groundObject,wheelInfo.m_raycastInfo.m_contactPointWS,m_forwardWS[wheelnum],maxDynamicFrictionImpulse);
+            btWheelContactPoint contactPt(m_chassisBody,groundObject,wheelInfo.m_raycastInfo.m_contactPointWS,m_forwaromegaS[wheelnum],maxDynamicFrictionImpulse);
             btScalar dynamicFrictionImpulse = CalcRollingFriction(contactPt);
             //apply both the engine and the dynamic friction impulses
             rollingFriction = dynamicFrictionImpulse;

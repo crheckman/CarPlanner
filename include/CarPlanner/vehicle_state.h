@@ -25,13 +25,13 @@ struct VehicleState
     }
 
     static VehicleState GetInterpolatedState(const std::vector<VehicleState>& vStates,
-                                             const int nStartIndex,
+                                             const int start_index,
                                              const double& time,
                                              int& nIndex)
     {
         VehicleState stateOut = vStates.back();
         double currTime = vStates.front().timestamp_;
-        for( size_t ii = nStartIndex; ii < vStates.size()-1 ; ii++){
+        for( size_t ii = start_index; ii < vStates.size()-1 ; ii++){
             nIndex = ii;
             if(vStates[ii+1].timestamp_ >= time){
                 double interpolation = (time-currTime)/(vStates[ii+1].timestamp_-currTime);
@@ -114,14 +114,14 @@ struct VehicleState
     static Eigen::Vector6d VehicleStateToPose(const VehicleState& state //< The given state to construct the pose from
                                               )
     {
-        Eigen::Vector6d poseOut;
-        poseOut << state.t_wv_.translation()[0],
+        Eigen::Vector6d pose_out_;
+        pose_out_ << state.t_wv_.translation()[0],
                    state.t_wv_.translation()[1],
                    state.t_wv_.translation()[2],
                    state.GetTheta(),
                    state.curvature_,
                    state.vel_w_dot_.norm();
-        return poseOut;
+        return pose_out_;
     }
 
 

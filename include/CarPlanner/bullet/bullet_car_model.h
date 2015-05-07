@@ -87,7 +87,7 @@ struct BulletWorldInstance : public std::mutex
         m_pHeightfieldData = NULL;
         timestamp_ = -1;
         m_bParametersChanged = false;
-        m_dTotalCommandTime = 0;
+        timestep_otalCommandTime = 0;
     }
 
     ~BulletWorldInstance()
@@ -121,8 +121,8 @@ struct BulletWorldInstance : public std::mutex
     BulletVehicleState m_vehicleBackup;
     VehicleState m_state;
 
-    CommandList m_lPreviousCommands;    //< List holding the previous commands sent to the model (Newest commands at the front, oldest at the back)
-    double m_dTotalCommandTime;
+    CommandList previous_commands_;    //< List holding the previous commands sent to the model (Newest commands at the front, oldest at the back)
+    double timestep_otalCommandTime;
 
     //static parameters
     std::map<int, double> m_Parameters;
@@ -150,7 +150,7 @@ public:
     void Init(const struct aiScene *pAIScene,std::map<int, double>& parameters, unsigned int numWorlds );
     void DebugDrawWorld(int worldId);
 
-    std::pair<double, double> GetSteeringRequiredAndMaxForce(const int nWorldId, const int nWheelId, const double dPhi, const double dt);
+    std::pair<double, double> GetSteeringRequiredAndMaxForce(const int world_id, const int nWheelId, const double dPhi, const double dt);
     double GetTotalGravityForce(BulletWorldInstance* pWorld);
     double GetTotalWheelFriction(int worldId, double dt);
     double _CalculateWheelFriction(int wheelNum, BulletWorldInstance* pInstance, double dt);
@@ -161,12 +161,12 @@ public:
                      const bool bNoDelay = false,
                      const bool bNoUpdate  = false );
     /////////////////////////////////////////////////////////////////////////////////////////
-    virtual void GetVehicleState(int worldId, VehicleState &stateOut);
-    //virtual VehicleState GetVehicleStateAsync(int worldId);
-    Eigen::Vector3d GetVehicleLinearVelocity(int worldId);
-    Eigen::Vector3d GetVehicleAngularVelocity(int worldId);
-    Eigen::Vector3d GetVehicleInertiaTensor(int worldId);
-    virtual void SetState(int nWorldId,  const VehicleState& state );
+    virtual void VehicleState(int worldId, VehicleState &stateOut);
+    //virtual VehicleState VehicleStateAsync(int worldId);
+    Eigen::Vector3d VehicleLinearVelocity(int worldId);
+    Eigen::Vector3d VehicleAngularVelocity(int worldId);
+    Eigen::Vector3d VehicleInertiaTensor(int worldId);
+    virtual void SetState(int world_id,  const VehicleState& state );
     //virtual void SetState( int worldId,  const Eigen::Matrix4d& vState  );
     virtual void SetStateNoReset(BulletWorldInstance *pWorld, const Sophus::SE3d &Twv );
     BulletWorldInstance *GetWorldInstance(int id){ return m_vWorlds[id]; }

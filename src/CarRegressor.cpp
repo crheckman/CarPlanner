@@ -1,6 +1,6 @@
-#include "CarPlanner/CarRegressor.h"
+#include <CarPlanner/solvers/car_regressor.h>
 
-static bool& g_bUseCentralDifferences = CVarUtils::CreateGetCVar("debug.UseCentralDifferences",true);
+static bool& g_use_central_differences = CVarUtils::CreateGetCVar("debug.UseCentralDifferences",true);
 static bool& g_bCurvatureDependentSegmentation = CVarUtils::CreateGetCVar("learning.CurvatureDependentSegmentation",false);
 static int& g_nSegmentLength = CVarUtils::CreateGetCVar("learning.SegmentLength",80);
 
@@ -11,7 +11,7 @@ struct ApplyParametersThreadFunctor {
                                  const std::vector<RegressionParameter>& params,
                                  const int index,
                                  Eigen::Vector7d& errorOut,
-                                 int nStartIndex,
+                                 int start_index,
                                  int nEndIndex,
                                  CommandList* pPreviousCommands,
                                  std::vector<VehicleState>* pStatesOut = NULL) :
@@ -19,9 +19,9 @@ struct ApplyParametersThreadFunctor {
         m_f(f),
         m_plan(plan),
         m_params(params),
-        m_index(index),
+        index_(index),
         m_errorOut(errorOut),
-        start_index_(nStartIndex),
+        start_index_(start_index),
         m_nEndIndex(nEndIndex),
         m_pPreviousCommands(pPreviousCommands),
         m_pStatesOut(pStatesOut)
@@ -30,10 +30,10 @@ struct ApplyParametersThreadFunctor {
     void operator()()
     {
         //make sure we don't go over the number of worlds we have
-        if( m_index >= m_f.GetCarModel()->GetWorldCount()){
+        if( index_ >= m_f.GetCarModel()->GetWorldCount()){
             assert(false);
         }
-        m_pRegressor->ApplyParameters(m_f,m_plan,m_params,m_index,m_errorOut,start_index_,
+        m_pRegressor->ApplyParameters(m_f,m_plan,m_params,index_,m_errorOut,start_index_,
                                       m_nEndIndex,m_pStatesOut,m_pPreviousCommands);
     }
 
@@ -41,7 +41,7 @@ struct ApplyParametersThreadFunctor {
     ApplyVelocitesFunctor5d &m_f;
     MotionSample& m_plan;
     const std::vector<RegressionParameter>& m_params;
-    const int m_index;
+    const int index_;
     Eigen::Vector7d& m_errorOut;
     int start_index_;
     int m_nEndIndex;
@@ -55,7 +55,7 @@ CarRegressor::CarRegressor() : thread_pool_(REGRESSOR_NUM_THREADS)
 
     current_norm_ = NORM_NOT_INITIALIZED;
     failed_ = false;
-    g_bUseCentralDifferences = false;
+    g_use_central_differences = false;
 
     //initialize the weight matrix
     omega_w_dot_ = Eigen::MatrixXd::Identity(7,7);
@@ -81,29 +81,29 @@ void CarRegressor::_RefreshIndices(MotionSample &sample,ApplyVelocitesFunctor5d&
 
     //find out the minimum starting index so that we can do the maximum control
     //delay if needed
-    double totalDelay = MAX_CONTROL_DELAY;
-    for(start_index_ = 0 ; start_index_ < (int)sample.m_vCommands.size() && totalDelay >= 0 ; start_index_++){
-        totalDelay -= sample.m_vCommands[start_index_].m_dT;
+    double total_delay = MAX_CONTROL_DELAY;
+    for(start_index_ = 0 ; start_index_ < (int)sample.commands_vector_.size() && total_delay >= 0 ; start_index_++){
+        total_delay -= sample.commands_vector_[start_index_].timestep_;
     }
 
     segment_indices_.clear();
     //designate the semgnet sections
-    for(size_t startIndex = 0 ;  startIndex < sample.m_vCommands.size() ; ){
+    for(size_t startIndex = 0 ;  startIndex < sample.commands_vector_.size() ; ){
          //this is to ensure we never start before start_index_
         startIndex = std::max((int)startIndex,start_index_);
         //this is to ensure the minimum segment length is defined by segment_length_
         int endIndex = startIndex + segment_length_;
         //search the commands array to find a location which has close to 0 steering, to end this segment
         if(g_bCurvatureDependentSegmentation){
-            for(size_t jj = endIndex; jj < sample.m_vCommands.size() ; jj++){
+            for(size_t jj = endIndex; jj < sample.commands_vector_.size() ; jj++){
                 //if the turn radius is above 10m, then this is a good place to end this segment
                 endIndex = jj;
-                if(fabs(sample.m_vCommands[jj].curvature_) < 0.5 ){
+                if(fabs(sample.commands_vector_[jj].curvature_) < 0.5 ){
                     //then find out when the actual transition occurs, as we need
                     //to factor in control delay (Note: this is approximate)
                     double dDelay = 0;
                     for(size_t kk = jj ;
-                        kk < sample.m_vCommands.size() &&
+                        kk < sample.commands_vector_.size() &&
                         dDelay < f.GetCarModel()->GetParameters(0)[CarParameters::ControlDelay]  ;
                         kk++){
                         endIndex = jj;
@@ -113,7 +113,7 @@ void CarRegressor::_RefreshIndices(MotionSample &sample,ApplyVelocitesFunctor5d&
             }
         }
         //ensure we never exceed the end of the command array
-        endIndex = std::min(endIndex,(int)sample.m_vCommands.size());
+        endIndex = std::min(endIndex,(int)sample.commands_vector_.size());
         //dout("Indices for segment " << segment_indices_.size() << " are " << startIndex << " to " << endIndex);
         segment_indices_.push_back(std::pair<int,int>(startIndex, endIndex));
         startIndex = endIndex;
@@ -127,7 +127,7 @@ void CarRegressor::Regress(ApplyVelocitesFunctor5d& f,
                            std::vector<RegressionParameter>& newParams)
 {
     _RefreshIndices(sample,f);
-    //segment_indices_.push_back(std::pair<int,int>(0, plan.m_vCommands.size()-1));
+    //segment_indices_.push_back(std::pair<int,int>(0, plan.commands_vector_.size()-1));
 
 
     std::vector<RegressionParameter> origParams = params;
@@ -136,7 +136,7 @@ void CarRegressor::Regress(ApplyVelocitesFunctor5d& f,
     newParams = params;
     current_norm_ = CalculateParamNorms(f,sample,params);
 
-    dout("Staring regression on " << sample.m_vStates.size() << " data points starting with params=" << params );
+    dout("Staring regression on " << sample.states_vector_.size() << " data points starting with params=" << params );
     failed_ = false;
     double dLastNorm = 0;
     int maxIter = 500;
@@ -161,8 +161,8 @@ void CarRegressor::Regress(ApplyVelocitesFunctor5d& f,
 double CarRegressor::CalculateParamNorms(ApplyVelocitesFunctor5d simFunctor,
                                          MotionSample& sample,
                                          const std::vector<RegressionParameter>& params,
-                                         std::vector<MotionSample>* pSamples /* = NULL */,
-                                         std::vector<int>* pSampleIndices/* = NULL */)
+                                         std::vector<MotionSample>* motion_samples /* = NULL */,
+                                         std::vector<int>* motion_sampleIndices/* = NULL */)
 {
     _RefreshIndices(sample,simFunctor);
 
@@ -171,11 +171,11 @@ double CarRegressor::CalculateParamNorms(ApplyVelocitesFunctor5d simFunctor,
     //reserve ample space
     dErrors.resize(segment_indices_.size());
     //reserve space for the motion samples if required
-    if(pSamples != NULL){
-        pSamples->resize(dErrors.size());
+    if(motion_samples != NULL){
+        motion_samples->resize(dErrors.size());
     }
-    if(pSampleIndices != NULL){
-        pSampleIndices->resize(dErrors.size());
+    if(motion_sampleIndices != NULL){
+        motion_sampleIndices->resize(dErrors.size());
     }
 
     std::vector<CommandList> vPreviousCommands;
@@ -206,10 +206,10 @@ double CarRegressor::CalculateParamNorms(ApplyVelocitesFunctor5d simFunctor,
                                              dErrors[counter],
                                              startIndex,endIndex,
                                              &vPreviousCommands[counter],
-                                             pSamples == NULL? NULL : &pSamples->at(counter).m_vStates);
+                                             motion_samples == NULL? NULL : &motion_samples->at(counter).states_vector_);
 
-        if(pSampleIndices != NULL){
-            pSampleIndices->at(counter) = startIndex;
+        if(motion_sampleIndices != NULL){
+            motion_sampleIndices->at(counter) = startIndex;
         }
 
         //schedule this calculation
@@ -235,14 +235,14 @@ double CarRegressor::CalculateParamNorms(ApplyVelocitesFunctor5d simFunctor,
 ///////////////////////////////////////////////////////////////////////
 void CarRegressor::_OptimizeParametersGN(ApplyVelocitesFunctor5d& f,
                                          MotionSample& plan,
-                                         const std::vector<RegressionParameter>& dParams,
-                                         std::vector<RegressionParameter>& dParamsOut,
-                                         double& dNewNorm)
+                                         const std::vector<RegressionParameter>& params_in,
+                                         std::vector<RegressionParameter>& params_out,
+                                         double& new_norm)
 {
     //        dout("Entered gauss-newton search with e = " << m_dCurrentEps);
     Eigen::IOFormat CleanFmt(5, 0, ", ", "\n", "[", "]");
     double dBestNorm = current_norm_,dBestDamping;
-    dParamsOut = dParams;
+    params_out = params_in;
     int nBestDimension;
     Eigen::VectorXd dDeltaParams;
     std::vector<RegressionParameter> dBestParams, dHypeParams;
@@ -280,7 +280,7 @@ void CarRegressor::_OptimizeParametersGN(ApplyVelocitesFunctor5d& f,
             pHypeParams[ii] = dParams;
             //add the delta to the parameters
             for(int jj = 0 ; jj < delta.rows() ; jj++){
-                pHypeParams[ii][jj].vel_w_dot_al -= delta[jj];
+                pHypeParams[ii][jj].val_ -= delta[jj];
             }
             //pHypeParams[ii] = dParams - delta;
             dHypeNorms[ii] = CalculateParamNorms(f,plan,pHypeParams[ii]);
@@ -311,11 +311,11 @@ void CarRegressor::_OptimizeParametersGN(ApplyVelocitesFunctor5d& f,
             current_task_ = eGaussNewton;
             dout("coord descent params: " << dBestParams << " norm: " << dBestNorm);
         }
-        dParamsOut = dBestParams;
-        dNewNorm = dBestNorm;
+        params_out = dBestParams;
+        new_norm = dBestNorm;
     }else {
         //accept the damped gauss newton
-        dParamsOut = dHypeParams;
+        params_out = dHypeParams;
         dNewNorm = dHypeNorm;
         current_task_ = eGaussNewton;
         dout("GN params: " << dHypeParams << " damping: " << dBestDamping <<  " norm: " << dHypeNorm);
@@ -328,7 +328,7 @@ void CarRegressor::ApplyParameters(ApplyVelocitesFunctor5d f,
                                    const std::vector<RegressionParameter>& params,
                                    const int index,
                                    Eigen::Vector7d& errorOut,
-                                   int nStartIndex,
+                                   int start_index,
                                    int nEndIndex,
                                    std::vector<VehicleState>* pStatesOut  /*= NULL*/,
                                    CommandList *pPreviousCommands /*= NULL*/)
@@ -337,31 +337,31 @@ void CarRegressor::ApplyParameters(ApplyVelocitesFunctor5d f,
     f.GetCarModel()->UpdateParameters(params,index);
 
     std::vector<VehicleState> vStates;
-    std::vector<VehicleState>& vStatesOut = pStatesOut == NULL ? vStates : *pStatesOut;
+    std::vector<VehicleState>& states_out = pStatesOut == NULL ? vStates : *pStatesOut;
 
     //apply the velocities WITHOUT COMPENSATION and with no torque calculation, this is so that we apply
     //the same torques/accels to the regressor vehicle as the real one
-    f.ApplyVelocities(plan.m_vStates[nStartIndex],
-                      plan.m_vCommands,
-                      vStatesOut,
-                      nStartIndex,
+    f.ApplyVelocities(plan.states_vector_[start_index],
+                      plan.commands_vector_,
+                      states_out,
+                      start_index,
                       nEndIndex,
                       index,
                       true,
                       pPreviousCommands);
 
 //    dout("Starting wheel rotation:" <<
-//         T2Cart(plan.m_vStates[nStartIndex].t_wv_.matrix())[5] <<
-//        " sim phi: " << T2Cart(vStatesOut.front().t_wv_.matrix())[5]);
+//         T2Cart(plan.states_vector_[start_index].t_wv_.matrix())[5] <<
+//        " sim phi: " << T2Cart(states_out.front().t_wv_.matrix())[5]);
 
-    //Eigen::Vector6d error6d = T2Cart(vStatesOut.back().t_wv_.matrix() * TInv(plan.m_vStates[nEndIndex-1].t_wv_.matrix()));
+    //Eigen::Vector6d error6d = T2Cart(states_out.back().t_wv_.matrix() * TInv(plan.states_vector_[nEndIndex-1].t_wv_.matrix()));
     errorOut.setZero();
-    for(size_t ii = 0 ; ii < vStatesOut.size() ; ii+= 10){
+    for(size_t ii = 0 ; ii < states_out.size() ; ii+= 10){
 
-        Eigen::Vector6d error6d = (vStatesOut[ii].t_wv_ * plan.m_vStates[nStartIndex+ii].t_wv_.inverse()).log();
+        Eigen::Vector6d error6d = (states_out[ii].t_wv_ * plan.states_vector_[start_index+ii].t_wv_.inverse()).log();
         //dout("Error out " << error6d.transpose() << std::endl);
         errorOut.head(6) += error6d;
-        errorOut[6] += (vStatesOut[ii].vel_w_dot_.norm() - plan.m_vStates[nStartIndex+ii].vel_w_dot_.norm());
+        errorOut[6] += (states_out[ii].vel_w_dot_.norm() - plan.states_vector_[start_index+ii].vel_w_dot_.norm());
     }
 }
 
@@ -400,11 +400,11 @@ void CarRegressor::CalculateJacobian(ApplyVelocitesFunctor5d functor,
         int plusIdx = ii*2, minusIdx = ii*2+1;
         //perturn this vector by a small amount
         vParams[plusIdx] = params;
-        vParams[plusIdx][ii].vel_w_dot_al += epsilon_;
+        vParams[plusIdx][ii].val_ += epsilon_;
 
-        if(g_bUseCentralDifferences == true){
+        if(g_use_central_differences == true){
             vParams[minusIdx] = params;
-            vParams[minusIdx][ii].vel_w_dot_al -= epsilon_;
+            vParams[minusIdx][ii].val_ -= epsilon_;
         }
         //dout("jacobian on dimension " << ii << " is with params:" << vParams[ii*2] << " and " << vParams[ii*2+1]);
     }
@@ -448,7 +448,7 @@ void CarRegressor::CalculateJacobian(ApplyVelocitesFunctor5d functor,
 
             worldCounter++;
 
-            if(g_bUseCentralDifferences == true){
+            if(g_use_central_differences == true){
                 //if we have no more worlds, wait until all worlds have finished
                 if(worldCounter >= functor.GetCarModel()->GetWorldCount()) {
                   while(thread_pool_.busy_threads() > (thread_pool_.num_threads())){
@@ -508,7 +508,7 @@ void CarRegressor::CalculateJacobian(ApplyVelocitesFunctor5d functor,
         Eigen::MatrixXd J = Eigen::MatrixXd(vResults[0].size(), params.size());
         for(size_t ii = 0 ; ii < params.size() ; ii++) {
             int plusIdx = ii*2, minusIdx = ii*2+1;
-            if(g_bUseCentralDifferences == true){
+            if(g_use_central_differences == true){
                 J.col(ii) = (vResults[plusIdx] - vResults[minusIdx])/(2*epsilon_);
                 //add to the parameter error tallies (include weight in the norm)
                 vResultNorms[plusIdx] += (vResults[plusIdx]).norm();
@@ -519,7 +519,7 @@ void CarRegressor::CalculateJacobian(ApplyVelocitesFunctor5d functor,
             }
 
             if(J.col(ii).norm() == 0){
-                dout("Jacobian column for parameter " << ii << "(" << params[ii].m_sName << ") for segment " << jj << " is zero.");
+                dout("Jacobian column for parameter " << ii << "(" << params[ii].name_ << ") for segment " << jj << " is zero.");
             }
         }
 
@@ -551,7 +551,7 @@ void CarRegressor::CalculateJacobian(ApplyVelocitesFunctor5d functor,
             nBestDimension = ii;
         }
 
-        if(g_bUseCentralDifferences == true){
+        if(g_use_central_differences == true){
             norm = vResultNorms[ii*2+1];
             if(norm < dBestNorm) {
                 dBestNorm = norm;

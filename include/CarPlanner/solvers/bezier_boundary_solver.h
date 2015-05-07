@@ -6,7 +6,7 @@
 /// Deriving from the boundary problem class, this class only adds specific control point vectors so as to
 /// facilitate the storage of these values. This will aid future versions of the solver to quickly adjust the bezier
 /// curve if it has already been solved.
-struct BezierBoundaryProblem : BoundaryProblem
+struct BezierBoundaryProblem : boundary_problem
 {
     BezierBoundaryProblem() :
         solved_(false),
@@ -28,9 +28,9 @@ public:
     BezierBoundarySolver();
     /// Solves the problem by connecting the bezier between the start and goal poses. The problem pointer passed in must be a
     /// pointer to a BezierBoundaryProblem instance, as it contains specific values which the solve function fills.
-    virtual void Solve(BoundaryProblem* problem);
+    virtual void Solve(boundary_problem* problem);
     /// Get the curvature at a particular distance along the curve
-    virtual double curvature(const BoundaryProblem *problem, double dist);
+    virtual double curvature(const boundary_problem *problem, double dist);
 
 private:
     /// Get the polynomial coefficients for the bezier, and its first and second derivatives

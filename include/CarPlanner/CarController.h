@@ -1,10 +1,12 @@
-#ifndef _CAR_CONTROLLER_H_
-#define _CAR_CONTROLLER_H_
+#pragma once
 
+#include <CarPlanner/utils/cvar_helpers.h>
+#include <CarPlanner/utils/vector.h>
+#include <CarPlanner/solvers/local_planner.h>
+#include <CarPlanner/vehicle_parameters.h>
+#include <CarPlanner/ApplyVelocitiesFunctor.h>
+#include <CarPlanner/ninjacar.h>
 
-#include "CarPlannerCommon.h"
-#include "CVarHelpers.h"
-#include "LocalPlanner.h"
 
 
 typedef std::list<ControlPlan*> PlanPtrList;
@@ -15,66 +17,72 @@ class CarController
 public:
     CarController();
 
-    void Init(std::vector<MotionSample> &segmentSamples, LocalPlanner *pPlanner, BulletCarModel *pModel, double dt) ;
+    void Init(std::vector<MotionSample> &segment_samples,
+              LocalPlanner *planner,
+              std::shared_ptr<carplanner::NinjaCar<Vehicle> > vehicle,
+              double dt) ;
     void Reset();
 
-    void GetCurrentCommands(const double time, ControlCommand &command);
-    VehicleState GetCurrentPose();
-    void SetCurrentPoseFromCarModel(BulletCarModel* pModel, int nWorldId);
-    void SetCurrentPose(VehicleState pose, CommandList* pCommandList = NULL);
+    void current_commands(const double time, ControlCommand &command);
+    VehicleState current_pose();
+    void SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar<Vehicle> > vehicle, int world_id);
+    void SetCurrentPose(VehicleState pose, CommandList* command_list = NULL);
     void GetCurrentCommands(const double time,
                             ControlCommand& command,
-                            Eigen::Vector3d& targetVel,
+                            Eigen::Vector3d& target_velocity,
                             Sophus::SE3d &dT_target);
-    float* GetMaxControlPlanTimePtr(){ return &m_dMaxControlPlanTime; }
-    float* GetLookaheadTimePtr(){ return &m_dLookaheadTime; }
+    float* max_control_plan_time_ptr() { return &max_control_plan_time_; }
+    float* lookahead_time_ptr() { return &lookahead_time_; }
     double GetLastPlanStartTime();
-    bool PlanControl(double dPlanStartTime, ControlPlan*& pPlanOut);
-    static double AdjustStartingSample(const std::vector<MotionSample>& segmentSamples,
+    bool PlanControl(double plan_start_time, ControlPlan*& plan_out);
+    static double AdjustStartingSample(const std::vector<MotionSample>& segment_samples,
                                        VehicleState& state,
-                                       int& segmentIndex,
-                                       int& sampleIndex,
-                                       int lowerLimit = 100,
-                                       int upperLimit = 100);
-    static void PrepareLookaheadTrajectory(const std::vector<MotionSample>& vSegmentSamples,
-                                           ControlPlan *pPlan, VelocityProfile &trajectoryProfile, MotionSample &trajectorySample, const double dLookaheadTime);
+                                       int& segment_index,
+                                       int& sample_index,
+                                       int lower_limit = 100,
+                                       int upper_limit = 100);
+    static void PrepareLookaheadTrajectory(const std::vector<MotionSample>& segment_samples,
+                                           ControlPlan *plan,
+                                           VelocityProfile &trajectoryProfile,
+                                           MotionSample &trajectory_sample,
+                                           const double dLookaheadTime);
 
 private:
-    bool _SampleControlPlan(ControlPlan* pPlan,LocalProblem& problem);
-    bool _SolveControlPlan(const ControlPlan* pPlan, LocalProblem& problem, const MotionSample &trajectory);
+    bool _SampleControlPlan(ControlPlan* plan,LocalProblem& problem);
+    bool _SolveControlPlan(const ControlPlan* plan, LocalProblem& problem, const MotionSample &trajectory);
 
-    void _GetCurrentPlanIndex(double currentTime, PlanPtrList::iterator& planIndex, int& sampleIndex, double& interpolationAmount);
+    void _GetCurrentPlanIndex(double currentTime, PlanPtrList::iterator& planIndex, int& sample_index, double& interpolationAmount);
 
 
 
-    int m_nLastCurrentPlanIndex;
-    VehicleState m_CurrentState;
-    BulletCarModel* m_pModel;
-    LocalPlanner* m_pPlanner;
-    ControlCommand m_LastCommand;
+    int last_current_plan_index_;
+    VehicleState current_state_;
+    std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle_;
+    LocalPlanner* planner_;
+    ControlCommand last_command_;
 
-    double m_dStartTime;
-    double m_dt;
-    bool m_bStarted;
-    bool m_bStopping;
-    bool m_bPoseUpdated;
-    bool m_bFirstPose;
+    double start_time_;
+    double timestep_;
+    bool whether_started_;
+    bool whether_stopping_;
+    bool pose_updated_;
+    bool whether_first_pose_;
 
-    float& m_dMaxControlPlanTime;
-    float& m_dLookaheadTime; 
+    float& max_control_plan_time_;
+    float& lookahead_time_;
 
-    std::thread* m_pControlPlannerThread;
+    std::thread* control_planner_thread_;
 
-    PlanPtrList m_lControlPlans;
-    std::vector<MotionSample> m_vSegmentSamples;
-    CommandList m_lCurrentCommands;
+    PlanPtrList control_plans_list_;
+    std::vector<MotionSample> segment_samples_;
+    CommandList current_commands_list_;
 
-    MotionSample m_MotionSample2dOnly;
+    MotionSample motion_sample_2donly_;
 
-    std::mutex m_PlanMutex;
-    std::mutex m_PoseMutex;
+    std::mutex plan_mutex_;
+    std::mutex pose_mutex_;
 
-    Eigen::Vector5d m_dLastDelta;
+    Eigen::Vector5d last_delta_;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -82,6 +90,4 @@ public:
 
 };
 
-
-#endif
 

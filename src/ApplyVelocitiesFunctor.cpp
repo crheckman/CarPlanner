@@ -7,7 +7,7 @@
 static bool& g_bSkidCompensationActive(CVarUtils::CreateCVar("debug.SkidCompensationActive", false, ""));
 
 ////////////////////////////////////////////////////////////////
-ApplyVelocitesFunctor5d::ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::NinjaCar<Vehicle,Controller>> vehicle, Eigen::Vector3d init_torques, CommandList *pPreviousCommands /* = NULL */) :
+ApplyVelocitesFunctor5d::ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::NinjaCar<Vehicle> > vehicle, Eigen::Vector3d init_torques, CommandList *pPreviousCommands /* = NULL */) :
     vehicle_(vehicle),
     init_torques_(init_torques),
     no_delay_(false)
@@ -21,14 +21,14 @@ ApplyVelocitesFunctor5d::ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::Nin
 ////////////////////////////////////////////////////////////////
 double ApplyVelocitesFunctor5d::GetGravityCompensation(int current_index)
 {
-    double aExtra =  -(m_pCarModel->GetTotalGravityForce(m_pCarModel->GetWorldInstance(current_index))/m_pCarModel->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass])*1.1/*CAR_GRAVITY_COMPENSATION_COEFFICIENT*/;
+    double aExtra =  -(vehicle_->GetTotalGravityForce(vehicle_->GetWorldInstance(current_index))/vehicle_->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass])*1.1/*CAR_GRAVITY_COMPENSATION_COEFFICIENT*/;
     return aExtra;
 }
 
 ////////////////////////////////////////////////////////////////
 double ApplyVelocitesFunctor5d::GetFrictionCompensation(int current_index, double dt)
 {
-    double aExtra = -m_pCarModel->GetTotalWheelFriction(current_index,dt)/m_pCarModel->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass];
+    double aExtra = -vehicle_->GetTotalWheelFriction(current_index,dt)/vehicle_->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass];
     return aExtra;
 }
 
@@ -36,14 +36,14 @@ double ApplyVelocitesFunctor5d::GetFrictionCompensation(int current_index, doubl
 //double ApplyVelocitesFunctor5d::GetSteeringCompensation(VehicleState& state, double phi, double curvature, int current_index)
 //{
 //    //get the corrected steering parameters
-//    phi = m_pCarModel->GetCorrectedSteering(curvature,current_index);
+//    phi = vehicle_->GetCorrectedSteering(curvature,current_index);
 //    double vf = state.vel_w_dot_.norm();
 //    double aExtra = fabs(vf*vf*curvature*tan(phi))*CAR_STEERING_COMPENSATION_COEFFICIENT;
 //    return aExtra;
 //}
 
 ////////////////////////////////////////////////////////////////
-void ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& starting_state,
+void ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& start_state,
                                               std::vector<ControlCommand>& commands,
                                               std::vector<VehicleState>& states_out,
                                               const int start_index,
@@ -53,92 +53,106 @@ void ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& starting_state
                                               const CommandList *pPreviousCommands /*= NULL*/) {
     Eigen::Vector3d torques;
     Eigen::Vector4dAlignedVec vCoefs;
-    BulletWorldInstance* pWorld = m_pCarModel->GetWorldInstance(current_index);
+    BulletWorldInstance* pWorld = vehicle_->GetWorldInstance(current_index);
 
-    vStatesOut.clear();
+    states_out.clear();
 
     double dTime = 0;
 
     VehicleState current_state;
-    m_pCarModel->SetState(current_index,starting_state);
-    m_pCarModel->VehicleState(current_index,current_state);
+    vehicle_->SetState(current_index,start_state);
+    vehicle_->VehicleState(current_index,current_state);
     VehicleState* current_state = &current_state; //this is necessary as we need to get a pointer to the current state for compensations
     //clear all the previous commands but chose between the member list or the one passed to the function
-    m_pCarModel->SetCommandHistory(current_index, pPreviousCommands == NULL ? previous_commands_ : *pPreviousCommands);
-    //m_pCarModel->ResetCommandHistory(current_index);
+    vehicle_->SetCommandHistory(current_index, pPreviousCommands == NULL ? previous_commands_ : *pPreviousCommands);
+    //vehicle_->ResetCommandHistory(current_index);
 
-    vStatesOut.resize(nEndIndex-nStartIndex);
+    states_out.resize(end_index-start_index);
 
     ControlCommand command;
-    for (int ii = nStartIndex; ii < nEndIndex; ii++) {
+    for (int ii = start_index; ii < end_index; ii++) {
         //update the vehicle state
         //approximation for this dt
-        command = vCommands[ii];
+        command = command_vector[ii];
         if(no_compensation == false ){
             //HACK: SampleAcceleration actually returns this as acceleration and
             //not force, so we have to change that here
-            double totalAccel = command.m_dForce;
+            double total_accel = command.force_;
 
 
 
             //compensate for gravity/slope
             double aExtra = 0;
             double dCorrectedCurvature;
-            command.m_dPhi = m_pCarModel->GetSteeringAngle(command.curvature_,
-                                                dCorrectedCurvature,current_index,1.0);
+            command.phi_ =
+                vehicle_->GetSteeringAngle(command.curvature_, dCorrectedCurvature,
+                                           current_index, 1.0);
 
             //if(dRatio < 1.0){
             if(g_bSkidCompensationActive){
                 //get the steering compensation
-                std::pair<double,double> leftWheel = m_pCarModel->GetSteeringRequiredAndMaxForce(current_index,0,command.m_dPhi,command.m_dT);
-                std::pair<double,double> rightWheel = m_pCarModel->GetSteeringRequiredAndMaxForce(current_index,1,command.m_dPhi,command.m_dT);
-                double dRatio = std::max(fabs(leftWheel.second/leftWheel.first),fabs(rightWheel.second/rightWheel.first));
+                std::pair<double,double> left_wheel =
+                    vehicle_->GetSteeringRequiredAndMaxForce(current_index, 0,
+                                                             command.phi_,
+                                                             command.timestep_);
+                std::pair<double,double> right_wheel =
+                    vehicle_->GetSteeringRequiredAndMaxForce(current_index, 1,
+                                                             command.phi_,
+                                                             command.timestep_);
+                double dRatio = std::max(fabs(left_wheel.second/left_wheel.first),
+                                         fabs(right_wheel.second/right_wheel.first));
 
                 for(int ii = 0 ; ii < 5 && dRatio < 1.0 ; ii++){
                     command.curvature_ *=1.5;///= (dRatio);
-                    command.m_dPhi = m_pCarModel->GetSteeringAngle(command.curvature_,
-                                                        dCorrectedCurvature,current_index,1.0);
-                    std::pair<double,double> newLeftWheel = m_pCarModel->GetSteeringRequiredAndMaxForce(current_index,0,command.m_dPhi,command.m_dT);
-                    std::pair<double,double> newRightWheel = m_pCarModel->GetSteeringRequiredAndMaxForce(current_index,1,command.m_dPhi,command.m_dT);
-                    dRatio = std::max(fabs(newLeftWheel.second/leftWheel.first),fabs(newRightWheel.second/rightWheel.first));
+                    command.phi_ =
+                        vehicle_->GetSteeringAngle(command.curvature_,
+                                                   dCorrectedCurvature,
+                                                   current_index, 1.0);
+                    std::pair<double,double> new_left_wheel =
+                        vehicle_->GetSteeringRequiredAndMaxForce(current_index, 0,
+                                                                 command.phi_,
+                                                                 command.timestep_);
+                    std::pair<double,double> new_right_wheel =
+                        vehicle_->GetSteeringRequiredAndMaxForce(current_index, 1,
+                                                                 command.phi_,
+                                                                 command.timestep_);
+                    dRatio = std::max(fabs(new_left_wheel.second/left_wheel.first),
+                                      fabs(new_right_wheel.second/right_wheel.first));
                 }
             }
 
 
 
             aExtra += GetGravityCompensation(current_index);
-            //aExtra += GetSteeringCompensation(*current_state,command.m_dPhi,command.curvature_,current_index);
-            aExtra += GetFrictionCompensation(current_index,command.m_dT);
+            aExtra += GetFrictionCompensation(current_index,command.timestep_);
 
 
-            totalAccel += aExtra;
-
-//            if(dRatio < 1.0){
-//                totalAccel = 0;//(dRatio*dRatio*dRatio);
-//            }
+            total_accel += aExtra;
 
             //actually convert the accel (up to this point) to a force to be applied to the car
-            command.m_dForce = totalAccel*m_pCarModel->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass];
+            command.force_ = total_accel*vehicle_->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass];
             //here Pwm = (torque+slope*V)/Ts
-            command.m_dForce = sgn(command.m_dForce)* (fabs(command.m_dForce) + pWorld->m_Parameters[CarParameters::TorqueSpeedSlope]*pWorld->m_state.vel_w_dot_.norm())/pWorld->m_Parameters[CarParameters::StallTorqueCoef];
-            command.m_dForce += pWorld->m_Parameters[CarParameters::AccelOffset]*SERVO_RANGE;
+            command.force_ = sgn(command.force_) * (fabs(command.force_) +
+                                pWorld->m_Parameters[CarParameters::TorqueSpeedSlope] *
+                pWorld->m_state.vel_w_dot_.norm())/pWorld->m_Parameters[CarParameters::StallTorqueCoef];
+            command.force_ += pWorld->m_Parameters[CarParameters::AccelOffset]*SERVO_RANGE;
 
             //offset and coef are in 0-1 range, so multiplying by SERVO_RANGE is necessary
-            command.m_dPhi = SERVO_RANGE*(command.m_dPhi*pWorld->m_Parameters[CarParameters::SteeringCoef] +
+            command.phi_ = SERVO_RANGE*(command.phi_*pWorld->m_Parameters[CarParameters::SteeringCoef] +
                                           pWorld->m_Parameters[CarParameters::SteeringOffset]);
 
             //save the command changes to the command array -- this is so we can apply
             //the commands to the vehicle WITH compensation
-            vCommands[ii] = command;
+            command_vector[ii] = command;
         }
 
         //set the timestamp for this command
-        vCommands[ii].timestamp_ = dTime;
-        dTime += command.m_dT;
-        m_pCarModel->UpdateState(current_index,command,command.m_dT,no_delay_);
-        m_pCarModel->VehicleState(current_index,vStatesOut[ii-nStartIndex]);
-        vStatesOut[ii-nStartIndex].curvature_ = command.curvature_;
-        current_state = &vStatesOut[ii-nStartIndex];
+        command_vector[ii].timestamp_ = dTime;
+        dTime += command.timestep_;
+        vehicle_->UpdateState(current_index, command, command.timestep_, no_delay_);
+        vehicle_->VehicleState(current_index,states_out[ii-start_index]);
+        states_out[ii-start_index].curvature_ = command.curvature_;
+        current_state = &states_out[ii-start_index];
         current_state->timestamp_ = dTime;
 
     }
@@ -148,16 +162,16 @@ void ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& starting_state
 VehicleState ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& startState,
                                                       MotionSample& sample,
                                                       int current_index /*= 0*/,
-                                                      bool noCompensation /*= false*/) {
+                                                      bool whether_compensation /*= false*/) {
     ApplyVelocities(startState,
-                    sample.m_vCommands,
-                    sample.m_vStates,
+                    sample.commands_vector_,
+                    sample.states_vector_,
                     0,
-                    sample.m_vCommands.size(),
+                    sample.commands_vector_.size(),
                     current_index,
-                    noCompensation,
+                    whether_compensation,
                     NULL);
-    return sample.m_vStates.back();
+    return sample.states_vector_.back();
 }
 
 

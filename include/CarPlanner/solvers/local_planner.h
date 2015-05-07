@@ -2,11 +2,11 @@
 
 #include <sophus/se3.hpp>
 #include <sophus/se2.hpp>
+#include <CarPlanner/boundary_solver.h>
 #include <CarPlanner/utils/thread_pool.h>
 #include <CarPlanner/bullet/bullet_car_model.h>
-#include <CarPlanner/BoundarySolver.h>
 #include <CarPlanner/ApplyVelocitiesFunctor.h>
-#include <CarPlanner/BezierBoundarySolver.h>
+#include <CarPlanner/solvers/bezier_boundary_solver.h>
 
 #define XYZ_WEIGHT 2
 #define THETA_WEIGHT 0.5
@@ -45,18 +45,18 @@ struct VelocityProfileNode
 
 struct AccelerationProfileNode
 {
-    AccelerationProfileNode(const double& dEndTime, const double& dAccel, const double& dEndDist,
-                            const double& dVStart, const double& dVEnd) :
-        m_dEndTime(dEndTime),
-        m_dAccel(dAccel),
-        m_dEndDist(dEndDist),
-        vel_w_dot_Start(dVStart),
-        vel_w_dot_End(dVEnd){}
-    double m_dEndTime;
-    double m_dAccel;
-    double m_dEndDist;
-    double vel_w_dot_Start;
-    double vel_w_dot_End;
+    AccelerationProfileNode(const double& end_time, const double& accel, const double& end_dist,
+                            const double& vel_dot_start, const double& vel_dot_end) :
+        end_time_(end_time),
+        accel_(accel),
+        end_dist_(end_dist),
+        vel_dot_start_(vel_dot_start),
+        vel_dot_end_(vel_dot_end){}
+    double end_time_;
+    double accel_;
+    double end_dist_;
+    double vel_dot_start_;
+    double vel_dot_end_;
 };
 
 typedef std::vector<VelocityProfileNode > VelocityProfile;
@@ -66,21 +66,21 @@ struct LocalProblemSolution
 {
     LocalProblemSolution() {}
     LocalProblemSolution(const MotionSample& sample,
-                         const Eigen::Vector5d& dOptParams,
-                         const double dMinTrajectoryTime,
-                         const double dNorm):
-        m_dOptParams(dOptParams),
-        m_Sample(sample),
-        m_dMinTrajectoryTime(dMinTrajectoryTime),
-        m_dNorm(dNorm)
+                         const Eigen::Vector5d& optimization_params,
+                         const double min_trajectory_time,
+                         const double norm):
+        optimization_params_(optimization_params),
+        sample_(sample),
+        min_trajectory_time_(min_trajectory_time),
+        norm_(norm)
     {
 
     }
     //BezierBoundaryProblem m_Solution;
-    Eigen::Vector5d m_dOptParams;
-    MotionSample m_Sample;
-    double m_dMinTrajectoryTime;
-    double m_dNorm;
+    Eigen::Vector5d optimization_params_;
+    MotionSample sample_;
+    double min_trajectory_time_;
+    double norm_;
 };
 
 enum LocalProblemCostMode
@@ -93,12 +93,12 @@ struct LocalProblem
 {
     void Reset()
     {
-        torque_StartTime = -1;
-        m_dCoefs = Eigen::Vector4d::Zero();
-        m_dStartTorques = Eigen::Vector3d::Zero();
-        m_bInertialControlActive = false;
-        m_pBestSolution = nullptr;
-        m_lSolutions.clear();;
+        torque_start_time_ = -1;
+        coefs_ = Eigen::Vector4d::Zero();
+        start_torques_ = Eigen::Vector3d::Zero();
+        inertial_control_active_ = false;
+        best_solution_ = nullptr;
+        local_solutions_.clear();;
     }
 
     LocalProblem()
@@ -106,77 +106,77 @@ struct LocalProblem
         Reset();
     }
 
-    LocalProblem(ApplyVelocitesFunctor5d* m_pf, const VehicleState& startState, const VehicleState& goalState, const double& dt) :m_dSegmentTime(-1), m_dStartTime(-1.0),
-        m_dT(dt),m_pFunctor(m_pf)
+    LocalProblem(ApplyVelocitesFunctor5d* m_pf, const VehicleState& startState, const VehicleState& goalState, const double& dt) :segment_time_(-1), start_time_(-1.0),
+        timestep_(dt),functor_(m_pf)
     {
         Reset();
-        m_StartState = startState;
-        m_GoalState = goalState;
+        start_state_ = startState;
+        goal_state_ = goalState;
     }
 
-    int m_nPlanId;
+    int plan_id_;
 
-    VehicleState m_StartState;
-    VehicleState m_GoalState;
+    VehicleState start_state_;
+    VehicleState goal_state_;
 
-    Eigen::Vector6d m_dStartPose;   //< Starting 2D pose for the boundary value solver, which is parametrized as [x,y,theta,curvature,v]'
-    Eigen::Vector6d m_dGoalPose;    //< Goal 2D pose for the boundary value solver, which is parametrized as [x,y,theta,curvature,v]'
-    Sophus::SO3d m_dTinv;
-    Sophus::SE3d m_dT3dInv;
-    Sophus::SE3d m_dT3d;
+    Eigen::Vector6d start_pose_;   //< Starting 2D pose for the boundary value solver, which is parametrized as [x,y,theta,curvature,v]'
+    Eigen::Vector6d m_goal_pose_;    //< Goal 2D pose for the boundary value solver, which is parametrized as [x,y,theta,curvature,v]'
+    Sophus::SO3d t_inv_;
+    Sophus::SE3d t_3d_inv_;
+    Sophus::SE3d t_3d_;
 
     //Eigen::VectorCubic2D m_dCubic;
-    double m_dSegmentTime;
-    double m_dMaxSegmentTime;                   //< This is to stop runaway simulation in case the gauss newton delta destroys the solution
+    double segment_time_;
+    double max_segment_time_;                   //< This is to stop runaway simulation in case the gauss newton delta destroys the solution
 
-    VelocityProfile m_vVelProfile;              //< Velocity profile for this trajectory
-    AccelerationProfile m_vAccelProfile;        //< Acceleration profile for this trajectory
+    VelocityProfile velocity_profile_;              //< Velocity profile for this trajectory
+    AccelerationProfile accel_profile_;        //< Acceleration profile for this trajectory
 
-    double m_dStartTime;
+    double start_time_;
 
-    //Eigen::Vector5d m_dOptParams;               //< Optimization parameters, which are parametrized as [x,y,t,a]
-    Eigen::Vector5d m_dInitOptParams;
-    Eigen::Vector6d m_dTransformedGoal;
-    double m_dT;                                //< The dt used in the functor to push the simulation forward
+    //Eigen::Vector5d optimization_params_;               //< Optimization parameters, which are parametrized as [x,y,t,a]
+    Eigen::Vector5d initial_optimization_params_;
+    Eigen::Vector6d transformed_goal_;
+    double timestep_;                                //< The dt used in the functor to push the simulation forward
 
-    ApplyVelocitesFunctor5d* m_pFunctor;        //< The functor which is responsible for simulating the car dynamics
+    ApplyVelocitesFunctor5d* functor_;        //< The functor which is responsible for simulating the car dynamics
 
     //optimization related properties
-    BezierBoundaryProblem m_BoundaryProblem;           //< The boundary problem structure, describing the 2D boundary problem
-    BoundarySolver* m_pBoundarySovler;          //< Pointer to the boundary value solver which will be used to solve the 2D problem
+    BezierBoundaryProblem boundary_problem_;           //< The boundary problem structure, describing the 2D boundary problem
+    BoundarySolver* boundary_solver_;          //< Pointer to the boundary value solver which will be used to solve the 2D problem
     //double current_norm_;                      //< The current norm of the optimization problem
     //MotionSample* m_pCurrentMotionSample;       //< Pointer to the current motion sample (which represents the current 3D trajectory)
-    bool m_bInLocalMinimum;                     //< Boolean which indicates if we're in a local minimum, which would indicate that the optimization is finished
-    PlannerError m_eError;
+    bool in_local_minimum_;                     //< Boolean which indicates if we're in a local minimum, which would indicate that the optimization is finished
+    PlannerError planner_error_;
 
-    LocalProblemCostMode m_eCostMode;
-    MotionSample m_Trajectory;
-    Eigen::Vector6dAlignedVec m_vTransformedTrajectory;
-    //double m_dMinTrajectoryTime;
+    LocalProblemCostMode cost_mode_;
+    MotionSample trajectory_sample_;
+    Eigen::Vector6dAlignedVec transformed_trajectory_;
+    //double min_trajectory_time_;
 
     //double m_dDistanceDelta;
-    Eigen::Vector4d m_dCoefs;
-    bool m_bInertialControlActive;
-    double torque_StartTime;
-    double torque_Duration;
-    Eigen::Vector3d m_dStartTorques;
+    Eigen::Vector4d coefs_;
+    bool inertial_control_active_;
+    double torque_start_time_;
+    double torque_duration_;
+    Eigen::Vector3d start_torques_;
 
-    void UpdateOptParams(const Eigen::VectorXd& dOptParams)
+    void UpdateOptParams(const Eigen::VectorXd& optimization_params)
     {
-        m_CurrentSolution.m_dOptParams.head(OPT_DIM) = dOptParams;
-        m_BoundaryProblem.m_dGoalPose.head(3) = dOptParams.head(3);
+        current_solution_.optimization_params_.head(OPT_DIM) = optimization_params;
+        boundary_problem_.m_goal_pose_.head(3) = optimization_params.head(3);
         if(OPT_DIM > OPT_AGGR_DIM){
-            //dout("Setting opt params to " << dOptParams.transpose());
-            m_BoundaryProblem.m_dAggressiveness = m_CurrentSolution.m_dOptParams[OPT_AGGR_DIM];
+            //dout("Setting opt params to " << optimization_params.transpose());
+            boundary_problem_.aggressiveness_ = current_solution_.optimization_params_[OPT_AGGR_DIM];
         }
     }
 
-    std::list<LocalProblemSolution> m_lSolutions;
-    LocalProblemSolution* m_pBestSolution;
-    LocalProblemSolution m_CurrentSolution;
+    std::list<LocalProblemSolution> local_solutions_;
+    LocalProblemSolution* best_solution_;
+    LocalProblemSolution current_solution_;
 };
 
-inline Eigen::VectorXd GetPointLineError(const Eigen::Vector6d& line1, const Eigen::Vector6d& line2, const Eigen::Vector6d& point, double &dInterpolationFactor);
+inline Eigen::VectorXd GetPointLineError(const Eigen::Vector6d& line1, const Eigen::Vector6d& line2, const Eigen::Vector6d& point, double &interpolation_factor);
 
 class LocalPlanner
 {
@@ -184,8 +184,8 @@ public:
     LocalPlanner();
     /// Initializes the LocalProblem structu which is passed in using the given parameters
     bool InitializeLocalProblem(LocalProblem& problem,  //< The local problem struct which will be fixed
-                                const double dStartTime, //< Starting time of the problem, this is used to parametrized the generated command laws
-                                const VelocityProfile* pVelProfile  = NULL,
+                                const double start_time, //< Starting time of the problem, this is used to parametrized the generated command laws
+                                const VelocityProfile* velocity_profile  = NULL,
                                 LocalProblemCostMode eCostMode = eCostPoint);
     /// Given a LocalProblem struct which contains a velocity profile, this function obtains the corresponding
     /// acceleration profile based
@@ -193,26 +193,30 @@ public:
     /// Iterate the given problem using gauss-newton
     bool Iterate(LocalProblem &problem);
     /// Samples the 2D control law that is generated by solving the boundary value problem
-    void SamplePath(const LocalProblem &problem, Eigen::Vector3dAlignedVec &vSamples, bool bBestSolution = false);
+    void SamplePath(const LocalProblem &problem,
+                    Eigen::Vector3dAlignedVec &samples,
+                    bool best_solution = false);
     /// Given the local problem struct, will simulate the vehicle physics and produce a motion sample
     Eigen::Vector6d SimulateTrajectory(MotionSample& sample,     //< The motion sample which will be filled by the function
-                                      LocalProblem& problem,    //< The Local Problem structure which will define the trajectory
-                                      const int nIndex = 0      //< The index of the world to run the simulation in (this is to do with the thread)
-                                      , const bool &bBestSolution = false);
+                                       LocalProblem& problem,    //< The Local Problem structure which will define the trajectory
+                                       const int nIndex = 0,      //< The index of the world to run the simulation in (this is to do with the thread)
+                                       const bool &best_solution = false);
     /// Samples the acceleration and curvature of the current control law
-    void SampleAcceleration(std::vector<ControlCommand>& vCommands, LocalProblem &problem) const;
-    void CalculateTorqueCoefficients(LocalProblem &problem, MotionSample *pSample);
+    void SampleAcceleration(std::vector<ControlCommand>& command_vector,
+                            LocalProblem &problem) const;
+    void CalculateTorqueCoefficients(LocalProblem &problem,
+                                     MotionSample *motion_sample);
     /// Calculates the error for the current trajectory. The error is parametrized as [x,y,t,v]
-    Eigen::VectorXd _CalculateSampleError(LocalProblem& problem, double& dMinTrajTime) const { return _CalculateSampleError(problem.m_CurrentSolution.m_Sample,problem,dMinTrajTime); }
-    Eigen::VectorXd _CalculateSampleError(const MotionSample &sample, LocalProblem &problem, double &dMinTrajTime) const;
+    Eigen::VectorXd _CalculateSampleError(LocalProblem& problem, double& min_traj_time) const { return _CalculateSampleError(problem.current_solution_.sample_,problem,min_traj_time); }
+    Eigen::VectorXd _CalculateSampleError(const MotionSample &sample, LocalProblem &problem, double &min_traj_time) const;
     Eigen::VectorXd _GetWeightVector(const LocalProblem& problem);
     double _CalculateErrorNorm(const LocalProblem &problem, const Eigen::VectorXd& dError);
-    static int GetNumWorldsRequired(const int nOptParams) { return nOptParams*2+2;}
+    static int GetNumWorldsRequired(const int num_optimization_params) { return num_optimization_params*2+2;}
 private:
     /// Calculates the jacobian of the trajectory at the current point in the trajectory
     bool _CalculateJacobian(LocalProblem &problem,          //< The problem struct defining the current trajectory and goals
                               Eigen::VectorXd& dCurrentErrorVec,          //< This is the current error vector
-                              LocalProblemSolution& coordinateDescent,
+                              LocalProblemSolution& coordinate_descent,
                               Eigen::MatrixXd &J                    //< Output: The jacobian matrix
                               );
     /// Internal function that iterates the gauss-newton optimization step
@@ -222,20 +226,20 @@ private:
     double _DistanceTraveled( const double& t,const AccelerationProfile& profile ) const;
 
     /// Transforms the goal pose so that it is on the 2D manifold specified by the problem struct
-    Eigen::Vector6d _TransformGoalPose(const Eigen::Vector6d &dGoalPose, const LocalProblem& problem) const;
+    Eigen::Vector6d _TransformGoalPose(const Eigen::Vector6d &goal_pose, const LocalProblem& problem) const;
     /// Returns the trajectory error given the trajectory and a transformed trajectory and end pose
-    Eigen::VectorXd _GetTrajectoryError(const MotionSample& sample, const Eigen::Vector6dAlignedVec& vTransformedPoses, const Eigen::Vector6d& endPose, double &dMinTime) const;
+    Eigen::VectorXd _GetTrajectoryError(const MotionSample& sample, const Eigen::Vector6dAlignedVec& transformed_poses, const Eigen::Vector6d& end_pose, double &min_time) const;
     /// Transforms a vehicle state so that it is on the 2D manifold specified by the problem struct
     Eigen::Vector6d _Transform3dGoalPose(const VehicleState& state, const LocalProblem &problem) const;
 
     ThreadPool thread_pool_;
 
-    double& m_dEps;                                              //< The epsilon used in the calculation of the finite difference jacobian
+    double& eps_;                                              //< The epsilon used in the calculation of the finite difference jacobian
 
 
-    BezierBoundarySolver m_BoundarySolver;                      //< The boundary value problem solver
+    BezierBoundarySolver boundary_solver_;                      //< The boundary value problem solver
 
-    Eigen::MatrixXd& m_dPointWeight;                                       //< The matrix which holds the weighted Gauss-Newton weights
-    Eigen::MatrixXd& m_dTrajWeight;
-    int m_nPlanCounter;
+    Eigen::MatrixXd& point_weight_;                                       //< The matrix which holds the weighted Gauss-Newton weights
+    Eigen::MatrixXd& traj_weight_;
+    int plan_counter_;
 };

@@ -30,7 +30,7 @@ public:
                          const std::vector<RegressionParameter>& params,
                          const int index,
                          Eigen::Vector7d& errorOut,
-                         int nStartIndex,
+                         int start_index,
                          int nEndIndex,
                          std::vector<VehicleState> *pStatesOut = NULL,
                          CommandList *pPreviousCommands = NULL);
@@ -42,8 +42,8 @@ public:
     double CalculateParamNorms(ApplyVelocitesFunctor5d f,
                                MotionSample& plan,
                                const std::vector<RegressionParameter>& params,
-                               std::vector<MotionSample> *pSamples = NULL,
-                               std::vector<int> *pSampleIndices = NULL);
+                               std::vector<MotionSample> *motion_samples = NULL,
+                               std::vector<int> *motion_sampleIndices = NULL);
 
     Eigen::MatrixXd FiniteDiffFunctor(ApplyVelocitesFunctor5d f,
                                       MotionSample& plan,
@@ -52,7 +52,7 @@ public:
                                       Eigen::Vector7d& dBaseError,
                                       double& dBestNorm,
                                       int& nBestDimension,
-                                      int nStartIndex,
+                                      int start_index,
                                       int nEndIndex);
 
 
@@ -61,9 +61,9 @@ private:
     void _RefreshIndices(MotionSample &sample, ApplyVelocitesFunctor5d &f);
     void _OptimizeParametersGN(ApplyVelocitesFunctor5d& f,
                                MotionSample& plan,
-                               const std::vector<RegressionParameter>& dParams,
+                               const std::vector<RegressionParameter>& params_in,
                                std::vector<RegressionParameter>& params_out,
-                               double& dNewNorm);
+                               double& new_norm);
 
     ThreadPool thread_pool_;
     double epsilon_;
