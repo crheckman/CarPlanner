@@ -104,7 +104,7 @@ void CarRegressor::_RefreshIndices(MotionSample &sample,ApplyVelocitesFunctor5d&
                     double dDelay = 0;
                     for(size_t kk = jj ;
                         kk < sample.commands_vector_.size() &&
-                        dDelay < f.GetCarModel()->GetParameters(0)[CarParameters::ControlDelay]  ;
+                        dDelay < f.GetCarModel()->GetParameters(0)[VehicleParameters::ControlDelay]  ;
                         kk++){
                         endIndex = jj;
                     }

@@ -1,8 +1,8 @@
-#include "CarPlanner/CarParameters.h"
+#include "CarPlanner/VehicleParameters.h"
 #include "CarPlanner/BulletCarModel.h"
 
 ////////////////////////////////////////////////////////////////
-const char * const CarParameters::Names[] = {"WheelBase", "Width", "Height", "DynamicFrictionCoef",
+const char * const VehicleParameters::Names[] = {"WheelBase", "Width", "Height", "DynamicFrictionCoef",
                                              "StaticSideFrictionCoef", "SlipCoefficient", "ControlDelay",
                                              "Mass", "WheelRadius", "WheelWidth","TractionFriction",
                                              "SuspConnectionHeight","Stiffness","MaxSuspForce","MaxSuspTravel",
@@ -12,7 +12,7 @@ const char * const CarParameters::Names[] = {"WheelBase", "Width", "Height", "Dy
                                              "Magic_B","Magic_C","Magic_E"};
 
 ////////////////////////////////////////////////////////////////
-bool CarParameters::SaveToFile(const std::string sFile, const std::map<int, double> &map)
+bool VehicleParameters::SaveToFile(const std::string sFile, const std::map<int, double> &map)
 {
     dout("Writing parameter map to " << sFile << "-----------------");
     std::ofstream file;
@@ -27,7 +27,7 @@ bool CarParameters::SaveToFile(const std::string sFile, const std::map<int, doub
 }
 
 ////////////////////////////////////////////////////////////////
-bool CarParameters::LoadFromFile(const std::string sFile, std::map<int, double>& map)
+bool VehicleParameters::LoadFromFile(const std::string sFile, std::map<int, double>& map)
 {
     dout("Reading parameter map from " << sFile << "-----------------");
     std::ifstream file;
@@ -71,7 +71,7 @@ bool CarParameters::LoadFromFile(const std::string sFile, std::map<int, double>&
 }
 
 ////////////////////////////////////////////////////////////////
-void CarParameters::PrintAllParams(const std::map<int, double> &map)
+void VehicleParameters::PrintAllParams(const std::map<int, double> &map)
 {
     dout("Printing parameter map -----------------");
     for(const std::pair<int, double>& pair: map ){
@@ -83,7 +83,7 @@ void CarParameters::PrintAllParams(const std::map<int, double> &map)
 RegressionParameter::RegressionParameter(std::map<int, double>& map, int nKey, BulletCarModel* vehicle/* = NULL*/):
     val_(map[nKey]),
     key_(nKey),
-    name_(CarParameters::Names[nKey]),
+    name_(VehicleParameters::Names[nKey]),
     vehicle_(vehicle){}
 
 ////////////////////////////////////////////////////////////////

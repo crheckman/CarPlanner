@@ -1,17 +1,37 @@
-#ifndef CARPARAMETERS_H
-#define CARPARAMETERS_H
+#pragma once
 
-#include <CarPlanner/CarPlannerCommon.h>
+#include <CarPlanner/ninjacar.h>
+#include <CarPlanner/bullet/raycast_vehicle.h>
 
-enum ControlTarget
+/// Class containing necessary description for BulletVehicle's state.
+class BulletVehicleState : public VehicleState
 {
-    eTargetSimulation = 0,
-    eTargetExperiment = 1
+public:
+
+    BulletVehicleState() {}
+    ~BulletVehicleState() {}
+
+    void LoadState(RaycastVehicle *pVehicle)
+    {
+        //copy back the data
+        *pVehicle = m_pVehicleBuffer;
+        memcpy( (void*)pVehicle->getRigidBody(), m_pChassisBuffer,sizeof(RaycastVehicle));
+    }
+
+    void SaveState(RaycastVehicle *pVehicle)
+    {
+        //make a backup of the vhicle
+        m_pVehicleBuffer = *pVehicle;
+        memcpy(m_pChassisBuffer, (void*)pVehicle->getRigidBody(),sizeof(btRigidBody));
+    }
+
+private:
+    unsigned char m_pChassisBuffer[sizeof(btRigidBody)];
+    RaycastVehicle m_pVehicleBuffer;
 };
 
-
 /// Structure containing all parameters for a car
-class CarParameters
+class BulletVehicleParameters : public VehicleParameters
 {
 public:
 
@@ -69,11 +89,4 @@ public:
         MagicFormula_E = 28     //magic formula D is calculated as Fz * StaticSideFrictionCoef
     };
 
-    static const char * const Names[];
-
-    static bool LoadFromFile(const std::string sFile, std::map<int, double> &map);
-    static void PrintAllParams(const std::map<int, double> &map);
-    static bool SaveToFile(const std::string sFile, const std::map<int, double> &map);
 };
-
-#endif // CARPARAMETERS_H

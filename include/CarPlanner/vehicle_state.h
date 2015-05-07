@@ -1,7 +1,7 @@
 #pragma once
 #include <CarPlanner/ninjacar.h>
 
-struct VehicleState
+class VehicleState
 {
     VehicleState()
     {

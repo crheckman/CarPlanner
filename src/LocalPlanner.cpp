@@ -581,7 +581,7 @@ bool LocalPlanner::InitializeLocalProblem(LocalProblem& problem,
 
     //if there are previous commands, apply them so we may make a more educated guess
     MotionSample delay_sample;
-    double total_delay = problem.functor_->GetCarModel()->GetParameters(0)[CarParameters::ControlDelay];
+    double total_delay = problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::ControlDelay];
     if(total_delay > 0 && problem.functor_->previous_Command().size() != 0){
         CommandList::iterator it  = problem.functor_->previous_Command().begin();
         while(total_delay > 0 && it != problem.functor_->previous_Command().end()){
@@ -589,7 +589,7 @@ bool LocalPlanner::InitializeLocalProblem(LocalProblem& problem,
             total_delay -= (*it).timestep_;
             ++it;
         }
-        problem.functor_->Reset_previous_Commands();
+        problem.functor_->reset_previous_commands();
         problem.functor_->set_no_delay(true);
         problem.functor_->ApplyVelocities(problem.start_state_,delay_sample,0,true);
         //and now set the starting state to this new value
@@ -598,7 +598,7 @@ bool LocalPlanner::InitializeLocalProblem(LocalProblem& problem,
 
     //regardless of the delay, for local planning we always want to proceed with no delay and with no previous commands
     //as the previous section should take care of that
-    problem.functor_->Reset_previous_Commands();
+    problem.functor_->reset_previous_commands();
     problem.functor_->set_no_delay(true);
 
     Sophus::SE3d dTranslation(Sophus::SO3d(),-problem.start_state_.t_wv_.translation());

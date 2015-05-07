@@ -3,7 +3,6 @@
 
 #include <CarPlanner/utils/vector.h>
 #include <CarPlanner/control_command.h>
-#include <CarPlanner/ninjacar_impl.h>
 #include <CarPlanner/vehicle_parameters.h>
 #include <CarPlanner/vehicle_state.h>
 
@@ -14,8 +13,7 @@ namespace carplanner {
  *
  */
 
-template<typename Vehicle,
-         typename Controller>
+template<typename Vehicle>
 
 class NinjaCar {
 protected:
@@ -32,12 +30,6 @@ public:
 
   /* Now define the available methods for CarPlanner in pure virtual */
 
-  /// Interpolate waypoint list.
-  virtual std::vector<SE3d> GetPlan(const std::vector<SE3d>& waypoints) const = 0;
-
-  /// Calculate instantaneous car control inputs in a vector.
-  virtual CommandList GetControl( const Eigen::VectorXd& target_point) const = 0;
-
   /// Pose must be implemented by the CarModel.
   /// There is no SetPose as a result.
   virtual SE3d Pose() const = 0;
@@ -53,11 +45,9 @@ public:
     return state_;
   }
 
-  /// Get for Vehicle and Controller.
+  /// Get for Vehicle.
   /// Will simply return a string based on which we're using.
   virtual std::string VehicleModel() = 0;
-
-  virtual std::string GetController() = 0;
 
   /// Get/Set for Params.
   virtual void SetParams( const VehicleParameters& params ) {
@@ -87,7 +77,6 @@ protected:
   std::string type_;
   VehicleParameters params_;
   VehicleState state_;
-  std::vector<std::vector<double>> control_list_;
 
 };
 

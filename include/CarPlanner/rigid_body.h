@@ -1,8 +1,6 @@
-#ifndef RIGIDBODY_H
-#define RIGIDBODY_H
+#pragma once
 
 #include <Eigen/Eigen>
-#include "CarPlannerCommon.h"
 
 namespace carplanner {
 
@@ -45,15 +43,14 @@ public:
 
   // the forces and moments applied are relative to body coordinates
 
-  void UpdateMotion(Eigen::Vector3d force, Eigen::Vector3d torque, double forceDt = -1, bool bIncludeGravity = true, bool bInBodyCoords = false) {
+  void UpdateMotion(Eigen::Vector3d force, Eigen::Vector3d torque,
+                    double forceDt = -1, bool bIncludeGravity = true,
+                    bool bInBodyCoords = false) {
     //if this is the first time the function is called, get a timestamp and exit
     if (timestamp_ == -1) {
-      timestamp_ = CarPlanner::Tic();
+      timestamp_ = carplanner::Tic();
       return;
     }
-
-
-
 
     Eigen::Matrix3d R = Cart2R(m_vW);
     //if given in body coordinates, rotate them to suit
@@ -70,8 +67,8 @@ public:
     }
 
     //get the time elapsed since the last time this function was called
-    double dT = CarPlanner::Toc(timestamp_);
-    timestamp_ = CarPlanner::Tic();
+    double dT = carplanner::Toc(timestamp_);
+    timestamp_ = carplanner::Tic();
 
     //allow the external caller to enforce dT
     if (forceDt != -1) {
@@ -103,8 +100,6 @@ public:
 
     //double integrate to get new velocity/position
     m_vV += (accel * dT);
-
-
 
     m_vLastPosition = m_vPosition;
     m_vPosition += (m_vV * dT);
@@ -194,5 +189,3 @@ private:
 };
 
 } // end namespace carplanner
-
-#endif // RIGIDBODY_H

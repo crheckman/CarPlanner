@@ -30,7 +30,7 @@ CarController::CarController() :
 /////////////////////////////////////////////////////////////////////////////////////////
 void CarController::Init(std::vector<MotionSample>& segment_samples,
                          LocalPlanner *planner,
-                         std::shared_ptr<NinjaCar<Vehicle>> vehicle,
+                         std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle,
                          double dt) {
     segment_samples_ = segment_samples;
     vehicle_ = vehicle;
@@ -40,7 +40,7 @@ void CarController::Init(std::vector<MotionSample>& segment_samples,
     m_bFirstPose = true;
     //m_pCurrentPlan = NULL;
     timestep_ = dt;
-    pose_updated = false;
+    state_updated = false;
 }
 
 
@@ -56,7 +56,7 @@ void CarController::Reset()
         }
     }
 
-    m_LastCommand = ControlCommand();
+    last_command_ = ControlCommand();
     m_bFirstPose = true;
     m_bStopping = false;
     m_bStarted = false;
@@ -97,9 +97,9 @@ bool CarController::_SampleControlPlan(ControlPlan* plan,
                 if(g_bFrontFlip){
                     plan->sample_.commands_vector_[ii].force_ = 0;
                 }else{
-                    plan->sample_.commands_vector_[ii].force_ = 0 + problem.functor_->GetCarModel()->GetParameters(0)[CarParameters::AccelOffset]*SERVO_RANGE;
+                    plan->sample_.commands_vector_[ii].force_ = 0 + problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::AccelOffset]*SERVO_RANGE;
                 }
-                plan->sample_.commands_vector_[ii].phi_ = 0 + problem.functor_->GetCarModel()->GetParameters(0)[CarParameters::SteeringOffset]*SERVO_RANGE;
+                plan->sample_.commands_vector_[ii].phi_ = 0 + problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::SteeringOffset]*SERVO_RANGE;
             }
         }
     }
@@ -207,12 +207,12 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
 
         //only continue planning if the pose has been updated since the last plan
         {
-            std::unique_lock<std::mutex> lock(pose_mutex_, std::try_to_lock);
-            if(pose_updated_ == false) {
+            std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
+            if(state_updated_ == false) {
                 //dout("Pose not updated, exiting control.");
                 return false;
             }else{
-                pose_updated_ = false;
+                state_updated_ = false;
             }
         }
 
@@ -247,14 +247,14 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
         }
 
 
-        VehicleState currentState;
+        VehicleState current_state;
         {
-            std::unique_lock<std::mutex> lock(pose_mutex_, std::try_to_lock);
+            std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
             current_state = current_state_;
         }
 
 //        ApplyVelocitesFunctor5d compdelay_functor(vehicle_,plan_start_torques, &current_commands_list_);
-//        //compdelay_functor.Reset_previous_Commands();
+//        //compdelay_functor.reset_previous_commands();
 //        compdelay_functor.set_no_delay(false);
 
 //        //push the state forward by the duration of the solver if we have commmands
@@ -262,16 +262,16 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
 //        double commandTime = plan_start_time;
 //        double maxTime =  plan_start_time + (g_max_control_plan_time*lookahead_time_);
 //        while(commandTime < maxTime){
-//            GetCurrentCommands(commandTime,m_LastCommand);
-//            m_LastCommand.timestep_ = std::min(timestep_,maxTime - commandTime);
-//            current_commands_list_.insert(current_commands_list_.begin(),m_LastCommand);
-//            compdelay_sample.commands_vector_.push_back(m_LastCommand);
+//            GetCurrentCommands(commandTime,last_command_);
+//            last_command_.timestep_ = std::min(timestep_,maxTime - commandTime);
+//            current_commands_list_.insert(current_commands_list_.begin(),last_command_);
+//            compdelay_sample.commands_vector_.push_back(last_command_);
 //            commandTime += timestep_;
 //        }
 
 //        if(compdelay_sample.commands_vector_.size() > 0){
-//            compdelay_functor.ApplyVelocities(currentState,compdelay_sample,0,true);
-//            currentState = compdelay_sample.states_vector_.back();
+//            compdelay_functor.ApplyVelocities(current_state,compdelay_sample,0,true);
+//            current_state = compdelay_sample.states_vector_.back();
 //        }
 
 //        //also push forward the start time of this plan
@@ -280,25 +280,25 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
         ApplyVelocitesFunctor5d delay_functor(vehicle_,plan_start_torque, NULL);
         //push forward the start state if there are commands stacked up
         MotionSample delay_sample;
-        double total_delay = delay_functor.vehicle()->GetParams(0)[CarParameters::ControlDelay];
+        double total_delay = delay_functor.vehicle()->GetParams(0)[VehicleParameters::ControlDelay];
         if(total_delay > 0 && current_commands_list_.size() != 0){
             for(const ControlCommand& command: current_commands_list_){
                 if(total_delay <= 0){
                     break;
                 }
-                ControlCommand delayCommand = command;
-                delayCommand.timestep_ = std::min(total_delay,command.timestep_);
-                delay_sample.commands_vector_.insert(delay_sample.commands_vector_.begin(),delayCommand);
-                total_delay -= delayCommand.timestep_;
+                ControlCommand delay_command = command;
+                delay_command.timestep_ = std::min(total_delay,command.timestep_);
+                delay_sample.commands_vector_.insert(delay_sample.commands_vector_.begin(),delay_command);
+                total_delay -= delay_command.timestep_;
             }
-            //delay_functor.Reset_previous_Commands();
+            //delay_functor.reset_previous_commands();
             delay_functor.set_no_delay(true);
             //this applyvelocities call has whether_compensation set to true, as the commands
             //are from a previous plan which includes compensation
-            delay_functor.ApplyVelocities(currentState,delay_sample,0,true);
+            delay_functor.ApplyVelocities(current_state,delay_sample,0,true);
             //and now set the starting state to this new value
             plan->start_state_ = delay_sample.states_vector_.back();
-            m_LastCommand = delay_sample.commands_vector_.back();
+            last_command_ = delay_sample.commands_vector_.back();
         }else{
             Eigen::Vector3d target_velocity;
             Sophus::SE3d target_position;
@@ -403,7 +403,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
             return false;
         }
 
-        //double controlDelay = problem.functor_->GetCarModel()->GetParameters(0)[CarParameters::ControlDelay];
+        //double controlDelay = problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::ControlDelay];
         double new_lookahead = std::max(std::min(problem.best_solution_->min_trajectory_time_, g_max_lookahead_time),g_min_lookahead_time);
         lookahead_time_ = g_lookahead_ema_weight*new_lookahead + (1-g_lookahead_ema_weight)*lookahead_time_;
 
@@ -440,37 +440,37 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
 
 VehicleState CarController::GetCurrentPose() {
     VehicleState pose_out_;
-    std::unique_lock<std::mutex> lock(pose_mutex_, std::try_to_lock);
+    std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
     pose_out_ = current_state;
     return pose_out_;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 void CarController::SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle, int world_id) {
-    std::unique_lock<std::mutex> lock(pose_mutex_, std::try_to_lock);
+    std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
     //Sophus::SE3d oldTwv = current_state.t_wv_;
     vehicle->VehicleState(0,current_state);
     //remove the car offset from the car state
     //current_state.t_wv_.block<3,1>(0,3) += current_state.t_wv_.block<3,1>(0,2)*CAR_HEIGHT_OFFSET;
     vehicle->GetCommandHistory(0,current_commands_list_);
-    pose_updated = g_freeze_control ? false : true;
+    state_updated = g_freeze_control ? false : true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void CarController::SetCurrentPose(VehicleState pose, CommandList* command_list /*= NULL*/) {
-    std::unique_lock<std::mutex> lock(pose_mutex_, std::try_to_lock);
+void CarController::SetCurrentPose(VehicleState state, CommandList* command_list /*= NULL*/) {
+    std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
 
-    if( std::isfinite(pose.vel_w_dot_[0]) == false ){
+    if( std::isfinite(state.vel_w_dot_[0]) == false ){
         assert(false);
     }
 
-    current_state = pose;
+    current_state = state;
 
     if(command_list != NULL) {
         current_commands_list_ = *command_list;
     }
 
-    pose_updated = true;
+    state_updated = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -507,8 +507,8 @@ void CarController::GetCurrentCommands(const double time,
     _GetCurrentPlanIndex(time,current_plan_index,current_sample_index,interpolationAmount);
     if( current_sample_index == -1 || current_plan_index == control_plans_list_.end() ) {
         //dout("GetCurrentCommands returning last commands a:" << m_dLastAccel << " c:" << m_dLastTurnRate << " t:" << m_dLastTorques.transpose());
-        command.force_ = vehicle_->GetParameters(0)[CarParameters::AccelOffset]*SERVO_RANGE;
-        command.phi_ = vehicle_->GetParameters(0)[CarParameters::SteeringOffset]*SERVO_RANGE;
+        command.force_ = vehicle_->GetParameters(0)[VehicleParameters::AccelOffset]*SERVO_RANGE;
+        command.phi_ = vehicle_->GetParameters(0)[VehicleParameters::SteeringOffset]*SERVO_RANGE;
         command.torque_ = Eigen::Vector3d::Zero();//m_dLastTorques;
         //dout("Torque output of: [ " << torques.transpose() << "] from previous plan");
     }else {
@@ -538,10 +538,10 @@ void CarController::GetCurrentCommands(const double time,
 
         //dout("GetCurrentCommands planid:" << (*current_plan_index)->plan_id_ << " sample index:" << current_sample_index << " returning interpolation with i:" << interpolationAmount << " a:" << accel << " c:" << curvature << " t:" << torques.transpose());
 
-        m_LastCommand.force_ = command.force_;
-        m_LastCommand.curvature_ = command.curvature_;
-        m_LastCommand.phi_ = command.phi_;
-        m_LastCommand.torque_ = command.torque_;
+        last_command_.force_ = command.force_;
+        last_command_.curvature_ = command.curvature_;
+        last_command_.phi_ = command.phi_;
+        last_command_.torque_ = command.torque_;
     }
 
 
@@ -607,8 +607,8 @@ double CarController::AdjustStartingSample(const std::vector<MotionSample>& segm
     int current_segment_index = segment_index;
     int current_sample_index = sample_index;
     double minDistance = DBL_MAX;
-    const VehicleState& currentState = segment_samples[current_segment_index].states_vector_[current_sample_index];
-    Eigen::Vector3d distVect = currentState.t_wv_.translation() - state.t_wv_.translation();
+    const VehicleState& current_state = segment_samples[current_segment_index].states_vector_[current_sample_index];
+    Eigen::Vector3d distVect = current_state.t_wv_.translation() - state.t_wv_.translation();
 
     int min_segment_index = segment_index;
     int min_sample_index = sample_index;
@@ -622,9 +622,9 @@ double CarController::AdjustStartingSample(const std::vector<MotionSample>& segm
         MotionSample::FixSampleIndexOverflow(segment_samples,current_segment_index,current_sample_index);
 
         //see if this distance is less than the prevous
-        const VehicleState& currentState2 = segment_samples[current_segment_index].states_vector_[current_sample_index];
+        const VehicleState& current_state2 = segment_samples[current_segment_index].states_vector_[current_sample_index];
 
-        distVect = currentState2.t_wv_.translation() - state.t_wv_.translation();
+        distVect = current_state2.t_wv_.translation() - state.t_wv_.translation();
         double sn = distVect.squarenorm();
         if( sn <= minDistance ) {
             minDistance = sn;
@@ -692,16 +692,16 @@ void CarController::PrepareLookaheadTrajectory(const std::vector<MotionSample> &
 
 
 
-    plan->m_nEndsegment_index = plan->start_segment_index_;
-    plan->m_nEndsample_index = plan->start_sample_index_+nTotalTrajSamples;
-    MotionSample::FixSampleIndexOverflow(segment_samples,plan->m_nEndsegment_index,plan->m_nEndsample_index);
-    plan->goal_state_ = segment_samples[plan->m_nEndsegment_index].states_vector_[plan->m_nEndsample_index];
+    plan->ending_segment_index_ = plan->start_segment_index_;
+    plan->ending_sample_index_ = plan->start_sample_index_+nTotalTrajSamples;
+    MotionSample::FixSampleIndexOverflow(segment_samples,plan->ending_segment_index_,plan->ending_sample_index_);
+    plan->goal_state_ = segment_samples[plan->ending_segment_index_].states_vector_[plan->ending_sample_index_];
 
     if(plan->goal_state_.IsAirborne()){
         plan->goal_state_.AlignWithVelocityVector();
         plan->goal_state_.curvature_ = 0;
     }else{
-        plan->goal_state_.curvature_ = segment_samples[plan->m_nEndsegment_index].commands_vector_[plan->m_nEndsample_index].curvature_;
+        plan->goal_state_.curvature_ = segment_samples[plan->ending_segment_index_].commands_vector_[plan->ending_sample_index_].curvature_;
     }
 
     if(plan->start_state_.vel_w_dot_.norm() >= 0.5){

@@ -165,8 +165,8 @@ public:
     int start_segment_index_;   //the segment at which this plan starts
     int start_sample_index_; //the sample in the segment at which this control plan starts
 
-    int m_nEndsegment_index;   //the segment at which this plan ends
-    int m_nEndsample_index; //the sample in the segment at which this control plan ends
+    int ending_segment_index_;   //the segment at which this plan ends
+    int ending_sample_index_; //the sample in the segment at which this control plan ends
     int plan_id_;
 
 

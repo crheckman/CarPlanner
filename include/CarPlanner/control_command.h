@@ -6,22 +6,27 @@
 class ControlCommand
 {
 public:
-    ControlCommand(): force_(0), curvature_(0), timestep_(0),phi_(0), torque_(0,0,0),timestamp_(0)
+    ControlCommand(): force_(0),
+      curvature_(0),
+      timestep_(0),
+      phi_(0),
+      torque_(0,0,0),
+      timestamp_(0)
+    {}
+
+    ControlCommand(const double& force,
+                   const double& curvature,
+                   const Eigen::Vector3d& torques,
+                   const double& dt,
+                   const double& dPhi)
     {
-
-    }
-    ControlCommand(const double& force,const double& curvature,
-                    const Eigen::Vector3d& torques, const double& dt, const double& dPhi){
-
         force_ = force;
-        //m_dControlAccel = accel;
         curvature_ = curvature;
         torque_ = torques;
         timestep_ = dt;
         phi_ = dPhi;
     }
 
-    //double m_dControlAccel;
     double force_;
     double curvature_;
     double timestep_;
@@ -36,5 +41,6 @@ public:
 
 /// List holding the previous commands sent to the model
 /// (Newest commands at the front, oldest at the back).
+///
 typedef std::list<ControlCommand> CommandList;
 

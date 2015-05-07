@@ -21,14 +21,14 @@ ApplyVelocitesFunctor5d::ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::Nin
 ////////////////////////////////////////////////////////////////
 double ApplyVelocitesFunctor5d::GetGravityCompensation(int current_index)
 {
-    double aExtra =  -(vehicle_->GetTotalGravityForce(vehicle_->GetWorldInstance(current_index))/vehicle_->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass])*1.1/*CAR_GRAVITY_COMPENSATION_COEFFICIENT*/;
+    double aExtra =  -(vehicle_->GetTotalGravityForce(vehicle_->GetWorldInstance(current_index))/vehicle_->GetWorldInstance(current_index)->m_Parameters[VehicleParameters::Mass])*1.1/*CAR_GRAVITY_COMPENSATION_COEFFICIENT*/;
     return aExtra;
 }
 
 ////////////////////////////////////////////////////////////////
 double ApplyVelocitesFunctor5d::GetFrictionCompensation(int current_index, double dt)
 {
-    double aExtra = -vehicle_->GetTotalWheelFriction(current_index,dt)/vehicle_->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass];
+    double aExtra = -vehicle_->GetTotalWheelFriction(current_index,dt)/vehicle_->GetWorldInstance(current_index)->m_Parameters[VehicleParameters::Mass];
     return aExtra;
 }
 
@@ -130,16 +130,16 @@ void ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& start_state,
             total_accel += aExtra;
 
             //actually convert the accel (up to this point) to a force to be applied to the car
-            command.force_ = total_accel*vehicle_->GetWorldInstance(current_index)->m_Parameters[CarParameters::Mass];
+            command.force_ = total_accel*vehicle_->GetWorldInstance(current_index)->m_Parameters[VehicleParameters::Mass];
             //here Pwm = (torque+slope*V)/Ts
             command.force_ = sgn(command.force_) * (fabs(command.force_) +
-                                pWorld->m_Parameters[CarParameters::TorqueSpeedSlope] *
-                pWorld->m_state.vel_w_dot_.norm())/pWorld->m_Parameters[CarParameters::StallTorqueCoef];
-            command.force_ += pWorld->m_Parameters[CarParameters::AccelOffset]*SERVO_RANGE;
+                                pWorld->m_Parameters[VehicleParameters::TorqueSpeedSlope] *
+                pWorld->state_.vel_w_dot_.norm())/pWorld->m_Parameters[VehicleParameters::StallTorqueCoef];
+            command.force_ += pWorld->m_Parameters[VehicleParameters::AccelOffset]*SERVO_RANGE;
 
             //offset and coef are in 0-1 range, so multiplying by SERVO_RANGE is necessary
-            command.phi_ = SERVO_RANGE*(command.phi_*pWorld->m_Parameters[CarParameters::SteeringCoef] +
-                                          pWorld->m_Parameters[CarParameters::SteeringOffset]);
+            command.phi_ = SERVO_RANGE*(command.phi_*pWorld->m_Parameters[VehicleParameters::SteeringCoef] +
+                                          pWorld->m_Parameters[VehicleParameters::SteeringOffset]);
 
             //save the command changes to the command array -- this is so we can apply
             //the commands to the vehicle WITH compensation

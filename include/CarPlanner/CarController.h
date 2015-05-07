@@ -65,7 +65,7 @@ private:
     double timestep_;
     bool whether_started_;
     bool whether_stopping_;
-    bool pose_updated_;
+    bool state_updated_;
     bool whether_first_pose_;
 
     float& max_control_plan_time_;
@@ -80,7 +80,7 @@ private:
     MotionSample motion_sample_2donly_;
 
     std::mutex plan_mutex_;
-    std::mutex pose_mutex_;
+    std::mutex state_mutex_;
 
     Eigen::Vector5d last_delta_;
 
