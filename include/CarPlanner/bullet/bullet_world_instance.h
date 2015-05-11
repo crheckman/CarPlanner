@@ -15,7 +15,7 @@ struct BulletWorldInstance : public std::mutex
     BulletWorldInstance()
     {
         m_pCarChassis = NULL;
-        m_pVehicle = NULL;
+        vehicle_ = NULL;
         m_pTerrainShape = NULL;
         m_pHeightfieldData = NULL;
         timestamp_ = -1;
@@ -37,7 +37,7 @@ struct BulletWorldInstance : public std::mutex
     btCollisionShape *m_pTerrainShape;
     RaycastVehicle::btVehicleTuning	m_Tuning;
     btVehicleRaycaster*	m_pVehicleRayCaster;
-    RaycastVehicle*	m_pVehicle;
+    RaycastVehicle*	vehicle_;
     btCollisionShape* m_pVehicleChassisShape;
 
     btAlignedObjectArray<btCollisionShape*> m_vCollisionShapes;

@@ -95,9 +95,9 @@ bool CarController::_SampleControlPlan(ControlPlan* plan,
                 if(g_bFrontFlip){
                     plan->sample_.commands_vector_[ii].force_ = 0;
                 }else{
-                    plan->sample_.commands_vector_[ii].force_ = 0 + problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::AccelOffset]*SERVO_RANGE;
+                    plan->sample_.commands_vector_[ii].force_ = 0 + problem.functor_->vehicle()->GetParameters(0)[VehicleParameters::AccelOffset]*SERVO_RANGE;
                 }
-                plan->sample_.commands_vector_[ii].phi_ = 0 + problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::SteeringOffset]*SERVO_RANGE;
+                plan->sample_.commands_vector_[ii].phi_ = 0 + problem.functor_->vehicle()->GetParameters(0)[VehicleParameters::SteeringOffset]*SERVO_RANGE;
             }
         }
     }
@@ -402,7 +402,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
             return false;
         }
 
-        //double controlDelay = problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::ControlDelay];
+        //double controlDelay = problem.functor_->vehicle()->GetParameters(0)[VehicleParameters::ControlDelay];
         double new_lookahead = std::max(std::min(problem.best_solution_->min_trajectory_time_, g_max_lookahead_time),g_min_lookahead_time);
         lookahead_time_ = g_lookahead_ema_weight*new_lookahead + (1-g_lookahead_ema_weight)*lookahead_time_;
 

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <list>
 #include <CarPlanner/ninjacar.h>
 
 /// Structure to hold the steering, acceleration and reaction wheel commands

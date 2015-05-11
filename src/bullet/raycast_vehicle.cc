@@ -9,9 +9,10 @@
  * It is provided "as is" without express or implied warranty.
 */
 
-#include "LinearMath/btVector3.h"
-#include "CarPlanner/RaycastVehicle.h"
+#include <CarPlanner/bullet/raycast_vehicle.h>
+#include <CarPlanner/utils/vector.h>
 
+#include "LinearMath/btVector3.h"
 #include "BulletDynamics/ConstraintSolver/btSolve2LinearConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btJacobianEntry.h"
 #include "LinearMath/btQuaternion.h"
@@ -20,7 +21,6 @@
 #include "LinearMath/btIDebugDraw.h"
 #include "BulletDynamics/ConstraintSolver/btContactConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btContactSolverInfo.h"
-#include "CarPlanner/CarPlannerCommon.h"
 
 #define ROLLING_INFLUENCE_FIX
 

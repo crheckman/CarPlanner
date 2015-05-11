@@ -53,35 +53,48 @@ include_directories( ${_INCLUDE_DIRS} )
 include_directories( ${CAR_PLANNER_INCLUDE_DIRS} )
 
 set( SRCS
-        src/ApplyVelocitiesFunctor.cpp
-        src/BulletCarModel.cpp
-        src/CarRegressor.cpp
-        src/LocalPlanner.cpp
-        src/WheelInfo.cpp
-        src/CarParameters.cpp
-        src/GLDebugDrawer.cpp
-        src/RaycastVehicle.cpp
-        src/BezierBoundarySolver.cpp
-        src/MochaException.cpp
-        src/CarController.cpp
-        src/DirectBoundarySolver.cpp
+        src/apply_velocities_functor.cc
+        src/car_controller.cc
+        src/vehicle_parameters.cc
+        src/bullet/bullet_vehicle.cc
+        src/bullet/gl_debug_drawer.cc
+        src/bullet/raycast_vehicle.cc
+        src/bullet/wheel_info.cc
+        src/solvers/bezier_boundary_solver.cc
+        src/solvers/car_regressor.cc
+        src/solvers/local_planner.cc
+        src/utils/gui_exception.cc
    )
 
 set( HDRS
-        include/CarPlanner/ApplyVelocitiesFunctor.h
-        include/CarPlanner/CarPlannerCommon.h
-        include/CarPlanner/BulletCarModel.h
-        include/CarPlanner/LocalPlanner.h
-        include/CarPlanner/CarWheel.h
-        include/CarPlanner/CarRegressor.h
-        include/CarPlanner/CarController.h
-        include/CarPlanner/GLDebugDrawer.h
-        include/CarPlanner/CarParameters.h
-        include/CarPlanner/DirectBoundarySolver.h
-        include/CarPlanner/CVarHelpers.h
-        include/CarPlanner/RaycastVehicle.h
-        include/CarPlanner/ThreadPool.h
-   )
+        include/CarPlanner/apply_velocities_functor.h
+        include/CarPlanner/boundary_solver.h
+        include/CarPlanner/car_controller.h
+        include/CarPlanner/control_command.h
+        include/CarPlanner/ninjacar.h
+        include/CarPlanner/ninjacar_impl.h
+        include/CarPlanner/ninjacar_models.h
+        include/CarPlanner/rigid_body.h
+        include/CarPlanner/vehicle_parameters.h
+        include/CarPlanner/vehicle_state.h
+        include/CarPlanner/bullet/bullet_vehicle.h
+        include/CarPlanner/bullet/bullet_vehicle_parameters.h
+        include/CarPlanner/bullet/bullet_vehicle_state.h
+        include/CarPlanner/bullet/bullet_world_instance.h
+        include/CarPlanner/bullet/car_wheel.h
+        include/CarPlanner/bullet/gl_debug_drawer.h
+        include/CarPlanner/bullet/raycast_vehicle.h
+        include/CarPlanner/bullet/wheel_info.h
+        include/CarPlanner/solvers/bezier_boundary_solver.h
+        include/CarPlanner/solvers/car_regressor.h
+        include/CarPlanner/solvers/local_planner.h
+        include/CarPlanner/utils/cvar_helpers.h
+        include/CarPlanner/utils/gui_exception.h
+        include/CarPlanner/utils/optim.h
+        include/CarPlanner/utils/thread_pool.h
+        include/CarPlanner/utils/time.h
+        include/CarPlanner/utils/vector.h
+        )
 
 string( TOLOWER ${PROJECT_NAME} LIBRARY_NAME )
 

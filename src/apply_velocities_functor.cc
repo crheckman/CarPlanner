@@ -1,4 +1,4 @@
-#include <CarPlanner/ApplyVelocitiesFunctor.h>
+#include <CarPlanner/apply_velocities_functor.h>
 #include <CarPlanner/control_command.h>
 #include <CarPlanner/vehicle_state.h>
 #include <CarPlanner/vehicle_parameters.h>

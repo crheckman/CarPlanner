@@ -105,6 +105,7 @@ inline T powi(T num, int exp) {
 }
 
 ////////////////////////////////////////////////////////////////////////////
+/*
 template <class Derived> std::fstream& operator>>(std::fstream& fs, Eigen::MatrixBase<Derived>& mM) {
   typedef typename Eigen::internal::traits<Derived>::Scalar LScalar;
   std::string sLine;
@@ -137,7 +138,7 @@ template <class Derived> std::fstream& operator>>(std::fstream& fs, Eigen::Matri
   }
   return fs;
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////
 inline Eigen::Matrix4d Tinv(const Eigen::Matrix4d& T)
 {

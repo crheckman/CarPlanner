@@ -581,7 +581,7 @@ bool LocalPlanner::InitializeLocalProblem(LocalProblem& problem,
 
     //if there are previous commands, apply them so we may make a more educated guess
     MotionSample delay_sample;
-    double total_delay = problem.functor_->GetCarModel()->GetParameters(0)[VehicleParameters::ControlDelay];
+    double total_delay = problem.functor_->vehicle()->GetParameters(0)[VehicleParameters::ControlDelay];
     if(total_delay > 0 && problem.functor_->previous_Command().size() != 0){
         CommandList::iterator it  = problem.functor_->previous_Command().begin();
         while(total_delay > 0 && it != problem.functor_->previous_Command().end()){
@@ -807,7 +807,7 @@ void LocalPlanner::CalculateTorqueCoefficients(LocalProblem& problem,
                                      rpg::AngleWrap(R2Cart(Rw_dest.matrix())[1]-R2Cart(Rw_init.matrix())[1]),// - (problem.cost_mode_ == eCostPoint ? M_PI*2 : 0),
                                      0);// = Rinit_dest.log();
 
-        const Eigen::Vector3d moment_of_inertia = problem.functor_->GetCarModel()->VehicleInertiaTensor(0);
+        const Eigen::Vector3d moment_of_inertia = problem.functor_->vehicle()->VehicleInertiaTensor(0);
         const Sophus::SO3d Rwv = motion_sample->states_vector_[start_index].t_wv_.so3();
         //angular velocities in body frame
         const Eigen::Vector3d omega_v = Rwv.inverse() * motion_sample->states_vector_[start_index].omega_w_dot_;

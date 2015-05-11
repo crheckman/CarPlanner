@@ -1,4 +1,4 @@
-#include "CarPlanner/BezierBoundarySolver.h"
+#include <CarPlanner/solvers/bezier_boundary_solver.h>
 #include "CVars/CVar.h"
 
 #define CURV_MULT 1.2
