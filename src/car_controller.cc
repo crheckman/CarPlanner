@@ -449,11 +449,12 @@ VehicleState CarController::GetCurrentState() {
 void CarController::SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle, int world_id) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     //Sophus::SE3d oldTwv = current_state.t_wv_;
-    vehicle->VehicleState(0,current_state);
+    vehicle->GetVehicleState(0,current_state_);
     //remove the car offset from the car state
     //current_state.t_wv_.block<3,1>(0,3) += current_state.t_wv_.block<3,1>(0,2)*CAR_HEIGHT_OFFSET;
     vehicle->GetCommandHistory(0,current_commands_list_);
     state_updated_ = g_freeze_control ? false : true;
+    std::cout << "SetCurrentPoseFromCarModel l. 452 car_controller.cc" << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

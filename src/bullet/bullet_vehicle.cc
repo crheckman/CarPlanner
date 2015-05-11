@@ -514,7 +514,7 @@ void BulletCarModel::UpdateState(  const int& worldId,
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-Eigen::Vector3d BulletCarModel::VehicleLinearVelocity(int worldId)
+Eigen::Vector3d BulletCarModel::GetVehicleLinearVelocity(int worldId)
 {
     BulletWorldInstance* pWorld = GetWorldInstance(worldId);
     btVector3 v = pWorld->m_pVehicle->getRigidBody()->getLinearVelocity();
@@ -525,7 +525,7 @@ Eigen::Vector3d BulletCarModel::VehicleLinearVelocity(int worldId)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-Eigen::Vector3d BulletCarModel::VehicleAngularVelocity(int worldId)
+Eigen::Vector3d BulletCarModel::GetVehicleAngularVelocity(int worldId)
 {
     BulletWorldInstance* pWorld = GetWorldInstance(worldId);
     btVector3 v = pWorld->m_pVehicle->getRigidBody()->getAngularVelocity();
@@ -536,7 +536,7 @@ Eigen::Vector3d BulletCarModel::VehicleAngularVelocity(int worldId)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-Eigen::Vector3d BulletCarModel::VehicleInertiaTensor(int worldId)
+Eigen::Vector3d BulletCarModel::GetVehicleInertiaTensor(int worldId)
 {
     BulletWorldInstance* pWorld = GetWorldInstance(worldId);
 
@@ -550,7 +550,7 @@ Eigen::Vector3d BulletCarModel::VehicleInertiaTensor(int worldId)
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void BulletCarModel::VehicleState(int worldId,VehicleState& stateOut)
+void BulletCarModel::GetVehicleState(int worldId,VehicleState& stateOut)
 {
     BulletWorldInstance* pWorld = GetWorldInstance(worldId);
     std::lock_guard<std::mutex> lock(*pWorld);

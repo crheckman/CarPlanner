@@ -74,11 +74,11 @@ public:
                    const bool bNoDelay = false,
                    const bool bNoUpdate  = false );
   /////////////////////////////////////////////////////////////////////////////////////////
-  virtual void VehicleState(int worldId, VehicleState &stateOut);
+  virtual void GetVehicleState(int worldId, VehicleState &stateOut);
   //virtual VehicleState VehicleStateAsync(int worldId);
-  Eigen::Vector3d VehicleLinearVelocity(int worldId);
-  Eigen::Vector3d VehicleAngularVelocity(int worldId);
-  Eigen::Vector3d VehicleInertiaTensor(int worldId);
+  Eigen::Vector3d GetVehicleLinearVelocity(int worldId);
+  Eigen::Vector3d GetVehicleAngularVelocity(int worldId);
+  Eigen::Vector3d GetVehicleInertiaTensor(int worldId);
   virtual void SetState(int world_id,  const VehicleState& state );
   //virtual void SetState( int worldId,  const Eigen::Matrix4d& vState  );
   virtual void SetStateNoReset(BulletWorldInstance *pWorld, const Sophus::SE3d &Twv );

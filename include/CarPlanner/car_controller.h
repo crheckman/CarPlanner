@@ -27,6 +27,7 @@ public:
 
     void current_commands(const double time, ControlCommand &command);
     VehicleState current_pose();
+    /// SetCurrentPoseFromCarModel doesn't appear to be used anywhere.
     void SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar<Vehicle> > vehicle, int world_id);
     void SetCurrentPose(VehicleState pose, CommandList* command_list = NULL);
     void GetCurrentCommands(const double time,

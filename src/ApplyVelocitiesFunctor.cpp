@@ -61,7 +61,7 @@ void ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& start_state,
 
     VehicleState current_state;
     vehicle_->SetState(current_index,start_state);
-    vehicle_->VehicleState(current_index,current_state);
+    vehicle_->GetVehicleState(current_index,current_state_);
     VehicleState* current_state = &current_state; //this is necessary as we need to get a pointer to the current state for compensations
     //clear all the previous commands but chose between the member list or the one passed to the function
     vehicle_->SetCommandHistory(current_index, pPreviousCommands == NULL ? previous_commands_ : *pPreviousCommands);
@@ -150,7 +150,7 @@ void ApplyVelocitesFunctor5d::ApplyVelocities(const VehicleState& start_state,
         command_vector[ii].timestamp_ = dTime;
         dTime += command.timestep_;
         vehicle_->UpdateState(current_index, command, command.timestep_, no_delay_);
-        vehicle_->VehicleState(current_index,states_out[ii-start_index]);
+        vehicle_->GetVehicleState(current_index,states_out[ii-start_index]);
         states_out[ii-start_index].curvature_ = command.curvature_;
         current_state = &states_out[ii-start_index];
         current_state->timestamp_ = dTime;
