@@ -1,4 +1,4 @@
-#include "CarPlanner/GLDebugDrawer.h"
+#include <CarPlanner/bullet/gl_debug_drawer.h>
 
 #include <stdio.h> //printf debugging
 

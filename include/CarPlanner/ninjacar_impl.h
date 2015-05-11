@@ -1,10 +1,8 @@
 #pragma once
-#include <CarPlanner/control/control_methods.h>
 #include <CarPlanner/ninjacar.h>
 
 namespace carplanner {
 
-/// Using a Bullet car model.
 template <typename Vehicle, typename Derived>
 
 class NinjaImpl : public NinjaCar<Vehicle> {
@@ -17,22 +15,12 @@ public:
   NinjaImpl() {}
   virtual ~NinjaImpl() {}
   NinjaImpl( const Eigen::VectorXd& params,
-               const Eigen::VectorXd& state ) :
-    NinjaCar<Vehicle>( params, state ) {
-  }
+             const Eigen::VectorXd& state ) :
+  NinjaCar<Vehicle>( params, state ) {}
 
-  SE3d
-  Pose() override {
-    Sophus::SE3d pose_out_;
-    pose_out_ << state_.t_wv_.translation()[0],
-               state_.t_wv_.translation()[1],
-               state_.t_wv_.translation()[2],
-               state_.GetTheta(),
-               state_.curvature_,
-               state_.vel_w_dot_.norm();
-    std::cout << "Check proper formatting of state to Pose for Bullet car." << std::endl; //crh unfinished
-    return pose_out_;
-  }
+  /// not defining any Vehicle-level methods here.
+  /// if we choose to define other Vehicle types at some point, we can
+  /// determine which methods are required to use MPC.
 
   };
 

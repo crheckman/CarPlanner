@@ -5,11 +5,12 @@
 
 #include <CVars/CVar.h>
 
+#include <CarPlanner/ninjacar.h>
 #include <CarPlanner/utils/optim.h>
 #include <CarPlanner/utils/vector.h>
-#include <CarPlanner/bullet/bullet_car_model.h>
+#include <CarPlanner/bullet/bullet_world_instance.h>
 
-using namespace carplanner;
+typedef carplanner::NinjaCar<BulletCarModel> BulletCarModel;
 
 BulletCarModel::BulletCarModel()
 {
@@ -152,7 +153,7 @@ void BulletCarModel::PushDelayedControl(int worldId, ControlCommand& delayedComm
 {
     BulletWorldInstance* pWorld = GetWorldInstance(worldId);
     //lock the world to prevent changes
-    std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(*pWorld);
     pWorld->previous_commands_.push_front(delayedCommands);
     //add to the total command time
     pWorld->total_command_time_ += delayedCommands.timestep_;
@@ -203,7 +204,7 @@ void BulletCarModel::_GetDelayedControl(int worldId, double timeDelay, ControlCo
 
     BulletWorldInstance* pWorld = GetWorldInstance(worldId);
     //lock the world to prevent changes
-    std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(*pWorld);
     CommandList& previousCommands = pWorld->previous_commands_;
     //if there is control delay, get commands from a previous time
     double currentDelay = 0;
@@ -294,7 +295,7 @@ void BulletCarModel::UpdateParameters(const std::vector<RegressionParameter>& vN
 /////////////////////////////////////////////////////////////////////////////////////////
 void BulletCarModel::UpdateParameters(const std::vector<RegressionParameter>& vNewParams,BulletWorldInstance* pWorld)
 {
-    std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(*pWorld);
     //update the parameter map and learning parameter list with the new params
     for(size_t ii = 0; ii < vNewParams.size() ; ii++) {
         //pWorld->m_vLearningParameters[ii].val_ = vNewParams[ii].val_;
@@ -485,7 +486,7 @@ void BulletCarModel::UpdateState(  const int& worldId,
 
     //do this in a critical section
     {
-        std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+        std::lock_guard<std::mutex> lock(*pWorld);
         //get chassis data from bullet
         Eigen::Matrix4d Twv;
         pWorld->m_pVehicle->getChassisWorldTransform().getOpenGLMatrix(Twv.data());
@@ -552,7 +553,7 @@ Eigen::Vector3d BulletCarModel::VehicleInertiaTensor(int worldId)
 void BulletCarModel::VehicleState(int worldId,VehicleState& stateOut)
 {
     BulletWorldInstance* pWorld = GetWorldInstance(worldId);
-    std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(*pWorld);
     stateOut = pWorld->state_;
     stateOut.t_wv_.translation() += GetBasisVector(stateOut.t_wv_,2)*
                                    (pWorld->m_Parameters[BulletVehicleParameters::SuspRestLength] +
@@ -574,7 +575,7 @@ void BulletCarModel::SetStateNoReset( BulletWorldInstance *pWorld , const Sophus
 void BulletCarModel::SetState( int world_id,  const VehicleState& state )
 {
     BulletWorldInstance *pWorld = GetWorldInstance(world_id);
-    std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(*pWorld);
     //load the backup onto the vehicle
     pWorld->state_backup_.LoadState(pWorld->m_pVehicle);
 
@@ -760,7 +761,7 @@ std::vector<Sophus::SE3d> BulletCarModel::GetWheelTransforms(const int worldInde
 void BulletCarModel::ResetCommandHistory(int worldId)
 {
     BulletWorldInstance *pWorld = GetWorldInstance(worldId);
-    std::unique_lock<std::mutex>lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex>lock(*pWorld);
     pWorld->previous_commands_.clear();
     pWorld->total_command_time_ = 0;
 }
@@ -769,7 +770,7 @@ void BulletCarModel::ResetCommandHistory(int worldId)
 void BulletCarModel::GetCommandHistory(int worldId,CommandList &previousCommandsOut)
 {
     BulletWorldInstance *pWorld = GetWorldInstance(worldId);
-    std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(*pWorld);
     previousCommandsOut = pWorld->previous_commands_;
 }
 
@@ -784,7 +785,7 @@ CommandList&        BulletCarModel::GetCommandHistoryRef(int worldId)
 void BulletCarModel::SetCommandHistory(const int& worldId, const CommandList &previousCommands)
 {
     BulletWorldInstance *pWorld = GetWorldInstance(worldId);
-    std::unique_lock<std::mutex> lock(*pWorld, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(*pWorld);
     //find out the total time of the commands
     pWorld->total_command_time_ = 0;
     for(const ControlCommand& command : previousCommands ){

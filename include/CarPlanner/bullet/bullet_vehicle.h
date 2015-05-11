@@ -39,13 +39,12 @@
 #define COL_GROUND 4
 
 //vehicle parameter ordering
+//none of these seem to be used anywhere? --crh
 #define VEHICLE_NUM_PARAMS 5
 #define VEHICLE_WIDTH 0.21
 #define VEHICLE_WHEEL_BASE 0.27
 #define VEHICLE_WHEEL_RADIUS 0.04
 #define VEHICLE_WHEEL_WIDTH 0.025
-#define MIN_CONTROL_DELAY 0.0
-#define MAX_CONTROL_DELAY 0.3
 
 namespace carplanner {
 

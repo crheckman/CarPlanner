@@ -50,7 +50,7 @@ struct BulletWorldInstance : public std::mutex
     class btDiscreteDynamicsWorld* m_pDynamicsWorld;
 
     btRigidBody* m_pCarChassis;
-    GLDebugDrawer	m_DebugDrawer;
+    GLDebugDrawer m_DebugDrawer;
     VehicleState state_backup_;
     VehicleState state_;
 

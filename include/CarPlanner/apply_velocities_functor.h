@@ -41,7 +41,6 @@ struct MotionSample
     {
         double dMax = 0;//DBL_MIN;
         for(size_t ii = 0 ; ii < commands_vector_.size() ; ii++){
-            //dMax = std::max(dMax,commands_vector_[ii].curvature_);
             dMax += commands_vector_[ii].curvature_;
         }
         return dMax;
@@ -185,6 +184,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class ApplyVelocitesFunctor5d
 {
 public:

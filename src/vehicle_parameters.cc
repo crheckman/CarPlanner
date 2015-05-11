@@ -1,5 +1,5 @@
-#include "CarPlanner/VehicleParameters.h"
-#include "CarPlanner/BulletCarModel.h"
+#include <CarPlanner/vehicle_parameters.h>
+#include <CarPlanner/ninjacar.h>
 
 ////////////////////////////////////////////////////////////////
 const char * const VehicleParameters::Names[] = {"WheelBase", "Width", "Height", "DynamicFrictionCoef",
@@ -37,8 +37,8 @@ bool VehicleParameters::LoadFromFile(const std::string sFile, std::map<int, doub
     while(std::getline(file,line))
     {
         std::vector<std::string> vals;
-        std::stringstream  lineStream(line);
-        std::string        cell;
+        std::stringstream lineStream(line);
+        std::string cell;
         while(std::getline(lineStream,cell,','))
         {
             vals.push_back(cell.c_str());
@@ -80,7 +80,9 @@ void VehicleParameters::PrintAllParams(const std::map<int, double> &map)
 }
 
 ////////////////////////////////////////////////////////////////
-RegressionParameter::RegressionParameter(std::map<int, double>& map, int nKey, BulletCarModel* vehicle/* = NULL*/):
+RegressionParameter::RegressionParameter(std::map<int, double>& map,
+                                         int nKey,
+                                         std::shared_ptr<carplanner::NinjaCar<BulletCarModel>> vehicle/* = NULL*/):
     val_(map[nKey]),
     key_(nKey),
     name_(VehicleParameters::Names[nKey]),

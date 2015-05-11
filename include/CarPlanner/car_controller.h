@@ -4,10 +4,12 @@
 #include <CarPlanner/utils/vector.h>
 #include <CarPlanner/solvers/local_planner.h>
 #include <CarPlanner/vehicle_parameters.h>
-#include <CarPlanner/ApplyVelocitiesFunctor.h>
+#include <CarPlanner/apply_velocities_functor.h>
 #include <CarPlanner/ninjacar.h>
 
-
+/// Moved from bullet_vehicle.h --- these look like control parameters.
+#define MIN_CONTROL_DELAY 0.0
+#define MAX_CONTROL_DELAY 0.3
 
 typedef std::list<ControlPlan*> PlanPtrList;
 

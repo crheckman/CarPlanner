@@ -1,5 +1,4 @@
-#include <CarPlanner/CarController.h>
-
+#include <CarPlanner/car_controller.h>
 
 static bool& g_bShow2DResult = CVarUtils::CreateGetUnsavedCVar("debug.Show2DResult",false);
 static bool& g_optimize_2donly = CVarUtils::CreateGetUnsavedCVar("debug.Optimize2DOnly",false);
@@ -31,16 +30,17 @@ CarController::CarController() :
 void CarController::Init(std::vector<MotionSample>& segment_samples,
                          LocalPlanner *planner,
                          std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle,
-                         double dt) {
+                         double dt)
+{
     segment_samples_ = segment_samples;
     vehicle_ = vehicle;
     planner_ = planner;
-    m_bStopping = false;
-    m_bStarted = false;
-    m_bFirstPose = true;
+    whether_stopping_ = false;
+    whether_started_ = false;
+    whether_first_pose_ = true;
     //m_pCurrentPlan = NULL;
     timestep_ = dt;
-    state_updated = false;
+    state_updated_ = false;
 }
 
 
@@ -48,7 +48,7 @@ void CarController::Init(std::vector<MotionSample>& segment_samples,
 void CarController::Reset()
 {
     {
-        std::unique_lock<std::mutex>(plan_mutex_);
+        std::lock_guard<std::mutex>(plan_mutex_);
         while(control_plans_list_.begin() != control_plans_list_.end()) {
             //delete this plan
             delete(control_plans_list_.front());
@@ -57,9 +57,9 @@ void CarController::Reset()
     }
 
     last_command_ = ControlCommand();
-    m_bFirstPose = true;
-    m_bStopping = false;
-    m_bStarted = false;
+    whether_first_pose_ = true;
+    whether_stopping_ = false;
+    whether_started_ = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -85,12 +85,10 @@ bool CarController::_SampleControlPlan(ControlPlan* plan,
         }
     }else{
         problem.functor_->ApplyVelocities(plan->start_state_,
-                                            plan->sample_.commands_vector_,
-                                            plan->sample_.states_vector_,
-                                            0,
-                                            plan->sample_.commands_vector_.size(),
-                                            0,
-                                            true);
+                                          plan->sample_.commands_vector_,
+                                          plan->sample_.states_vector_, 0,
+                                          plan->sample_.commands_vector_.size(), 0,
+                                          true);
         //if we are in the air, make sure no force is applied and the wheels are straight
         for(size_t ii = 0 ; ii < plan->sample_.states_vector_.size() ; ii++){
             if(plan->sample_.states_vector_[ii].IsAirborne()){
@@ -145,7 +143,8 @@ bool CarController::_SolveControlPlan(const ControlPlan* plan,
 
     res = true;
 
-    std::chrono::high_resolution_clock::time_point timer = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point timer =
+        std::chrono::high_resolution_clock::now();
 
     while(1)
     {
@@ -160,7 +159,7 @@ bool CarController::_SolveControlPlan(const ControlPlan* plan,
             }
         }
 
-        if(m_bStopping){
+        if(whether_stopping_){
             res = false;
         }
 
@@ -207,7 +206,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
 
         //only continue planning if the pose has been updated since the last plan
         {
-            std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
+            std::lock_guard<std::mutex> lock(state_mutex_);
             if(state_updated_ == false) {
                 //dout("Pose not updated, exiting control.");
                 return false;
@@ -220,7 +219,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
         plan = new ControlPlan();
 
         {
-            std::unique_lock<std::mutex> lock(plan_mutex_, std::try_to_lock);
+            std::lock_guard<std::mutex> lock(plan_mutex_);
 
             //first find out where we are on the current plan
             _GetCurrentPlanIndex(plan_start_time,current_plan_index,current_sample_index,interpolation_amount);
@@ -249,7 +248,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
 
         VehicleState current_state;
         {
-            std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
+            std::lock_guard<std::mutex> lock(state_mutex_);
             current_state = current_state_;
         }
 
@@ -323,7 +322,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
             plan->start_sample_index_ = start_sample_old_plan;
 
             //start by finding the closest segment to our current location
-            if(m_bFirstPose){
+            if(whether_first_pose_){
                 //if this is the first pose, search everywhere for the car
                 start_segment_old_plan = 0;
                 start_sample_old_plan = 0;
@@ -331,7 +330,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
                 for(size_t jj = 0 ; jj < segment_samples_.size() ; jj++) {
                     sample_count += segment_samples_[jj].commands_vector_.size();
                 }
-                m_bFirstPose = false;
+                whether_first_pose_ = false;
                 AdjustStartingSample(segment_samples_,
                                      plan->start_state_,
                                      plan->start_segment_index_,
@@ -413,7 +412,7 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
 
 
         {
-            std::unique_lock<std::mutex> lock(plan_mutex_, std::try_to_lock);
+            std::lock_guard<std::mutex> lock(plan_mutex_);
             plan->plan_id_ = rand() % 10000;
             //dout("Created control plan id:" << plan->plan_id_ << " with starting torques: " << plan_start_torques.transpose() << "with norm " << planner_->GetCurrentNorm());
             control_plans_list_.push_back(plan);
@@ -438,27 +437,28 @@ bool CarController::PlanControl(double plan_start_time, ControlPlan*& plan_out) 
     return true;
 }
 
-VehicleState CarController::GetCurrentPose() {
-    VehicleState pose_out_;
-    std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
-    pose_out_ = current_state;
-    return pose_out_;
+VehicleState CarController::GetCurrentState() {
+    VehicleState state_out;
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    state_out = current_state_;
+    std::cout << "state or pose? l. 444 car_controller.cc" << std::endl;
+    return state_out;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 void CarController::SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle, int world_id) {
-    std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(state_mutex_);
     //Sophus::SE3d oldTwv = current_state.t_wv_;
     vehicle->VehicleState(0,current_state);
     //remove the car offset from the car state
     //current_state.t_wv_.block<3,1>(0,3) += current_state.t_wv_.block<3,1>(0,2)*CAR_HEIGHT_OFFSET;
     vehicle->GetCommandHistory(0,current_commands_list_);
-    state_updated = g_freeze_control ? false : true;
+    state_updated_ = g_freeze_control ? false : true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 void CarController::SetCurrentPose(VehicleState state, CommandList* command_list /*= NULL*/) {
-    std::unique_lock<std::mutex> lock(state_mutex_, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(state_mutex_);
 
     if( std::isfinite(state.vel_w_dot_[0]) == false ){
         assert(false);
@@ -470,13 +470,13 @@ void CarController::SetCurrentPose(VehicleState state, CommandList* command_list
         current_commands_list_ = *command_list;
     }
 
-    state_updated = true;
+    state_updated_ = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 double CarController::GetLastPlanStartTime()
 {
-    std::unique_lock<std::mutex> lock(plan_mutex_, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(plan_mutex_);
     if(control_plans_list_.empty() == false){
         return control_plans_list_.back()->start_time_;
     }else{
@@ -500,7 +500,7 @@ void CarController::GetCurrentCommands(const double time,
                                        Eigen::Vector3d& target_velocity,
                                        Sophus::SE3d& dT_target)
 {
-    std::unique_lock<std::mutex> lock(plan_mutex_, std::try_to_lock);
+    std::lock_guard<std::mutex> lock(plan_mutex_);
     int current_sample_index;
     PlanPtrList::iterator current_plan_index;
     double interpolationAmount;

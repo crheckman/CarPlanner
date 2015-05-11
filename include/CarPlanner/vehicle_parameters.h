@@ -4,8 +4,8 @@
 
 enum ControlTarget
 {
-    eTargetSimulation = 0,
-    eTargetExperiment = 1
+  eTargetSimulation = 0,
+  eTargetExperiment = 1
 };
 
 
@@ -26,49 +26,49 @@ public:
 
 struct RegressionParameter
 {
-    RegressionParameter(std::map<int,  double>& map,
-                        int nKey,
-                        std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle = NULL);
+  RegressionParameter(std::map<int, double>& map,
+                      int nKey,
+                      std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle = NULL);
 
-    static bool AreEqual(const std::vector<RegressionParameter>& params1,
-                         const std::vector<RegressionParameter>& params2);
-    void UpdateValue(const double newVal);
-    double val_;
-    int key_;
-    std::string name_;
-    std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle_;
+  static bool AreEqual(const std::vector<RegressionParameter>& params1,
+                       const std::vector<RegressionParameter>& params2);
+  void UpdateValue(const double newVal);
+  double val_;
+  int key_;
+  std::string name_;
+  std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle_;
 };
 
 /// Redefinition of redirection operators.
 inline std::ostream& operator<<( std::ostream& Stream,
                                  RegressionParameter& parameter )
 {
-    Stream << parameter.val_;
-    return Stream;
+  Stream << parameter.val_;
+  return Stream;
 }
 
 inline std::istream& operator>>( std::istream& Stream,
                                  RegressionParameter& parameter )
 {
-    double val;
-    Stream >> val;
-    parameter.UpdateValue(val);
-    return Stream;
+  double val;
+  Stream >> val;
+  parameter.UpdateValue(val);
+  return Stream;
 }
 
 inline std::ostream& operator<<( std::ostream& Stream,
                                  const std::vector<RegressionParameter>& params )
 {
-    Stream << "[ ";
+  Stream << "[ ";
 
-    for( unsigned int ii = 0; ii < params.size(); ii++ ) {
-        Stream << params[ii].name_ << ":";
-        Stream << params[ii].val_;
-        Stream << ", ";
-    }
+  for( unsigned int ii = 0; ii < params.size(); ii++ ) {
+    Stream << params[ii].name_ << ":";
+    Stream << params[ii].val_;
+    Stream << ", ";
+  }
 
-    Stream << " ]";
+  Stream << " ]";
 
-    return Stream;
+  return Stream;
 
 }

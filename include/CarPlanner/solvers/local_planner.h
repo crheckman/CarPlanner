@@ -2,10 +2,10 @@
 
 #include <sophus/se3.hpp>
 #include <sophus/se2.hpp>
+#include <CarPlanner/ninjacar.h>
 #include <CarPlanner/boundary_solver.h>
+#include <CarPlanner/apply_velocities_functor.h>
 #include <CarPlanner/utils/thread_pool.h>
-#include <CarPlanner/bullet/bullet_car_model.h>
-#include <CarPlanner/ApplyVelocitiesFunctor.h>
 #include <CarPlanner/solvers/bezier_boundary_solver.h>
 
 #define XYZ_WEIGHT 2
