@@ -7,7 +7,7 @@
 static bool& g_bSkidCompensationActive(CVarUtils::CreateCVar("debug.SkidCompensationActive", false, ""));
 
 ////////////////////////////////////////////////////////////////
-ApplyVelocitesFunctor5d::ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::NinjaCar<Vehicle> > vehicle, Eigen::Vector3d init_torques, CommandList *pPreviousCommands /* = NULL */) :
+ApplyVelocitesFunctor5d::ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::NinjaCar > vehicle, Eigen::Vector3d init_torques, CommandList *pPreviousCommands /* = NULL */) :
     vehicle_(vehicle),
     init_torques_(init_torques),
     no_delay_(false)

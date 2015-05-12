@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CarPlanner/ninjacar.h>
+#include <CarPlanner/vehicle_parameters.h>
 #include <CarPlanner/bullet/raycast_vehicle.h>
 
 

@@ -14,9 +14,6 @@ class VehicleParameters
 {
 public:
 
-  LoadState( const carplanner::NinjaCar<Vehicle> ) = 0;
-  SaveState( const carplanner::NinjaCar<Vehicle> ) = 0;
-
   static const char * const Names[];
   static bool LoadFromFile(const std::string sFile, std::map<int, double> &map);
   static void PrintAllParams(const std::map<int, double> &map);
@@ -28,7 +25,7 @@ struct RegressionParameter
 {
   RegressionParameter(std::map<int, double>& map,
                       int nKey,
-                      std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle = NULL);
+                      std::shared_ptr<carplanner::NinjaCar> vehicle );
 
   static bool AreEqual(const std::vector<RegressionParameter>& params1,
                        const std::vector<RegressionParameter>& params2);
@@ -36,7 +33,7 @@ struct RegressionParameter
   double val_;
   int key_;
   std::string name_;
-  std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle_;
+  std::shared_ptr<carplanner::NinjaCar> vehicle_;
 };
 
 /// Redefinition of redirection operators.

@@ -29,7 +29,7 @@ CarController::CarController() :
 /////////////////////////////////////////////////////////////////////////////////////////
 void CarController::Init(std::vector<MotionSample>& segment_samples,
                          LocalPlanner *planner,
-                         std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle,
+                         std::shared_ptr<carplanner::NinjaCar> vehicle,
                          double dt)
 {
     segment_samples_ = segment_samples;
@@ -446,7 +446,7 @@ VehicleState CarController::GetCurrentState() {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void CarController::SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle, int world_id) {
+void CarController::SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar> vehicle, int world_id) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     //Sophus::SE3d oldTwv = current_state.t_wv_;
     vehicle->GetVehicleState(0,current_state_);

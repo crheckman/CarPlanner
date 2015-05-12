@@ -21,14 +21,14 @@ public:
 
     void Init(std::vector<MotionSample> &segment_samples,
               LocalPlanner *planner,
-              std::shared_ptr<carplanner::NinjaCar<Vehicle> > vehicle,
+              std::shared_ptr<carplanner::NinjaCar > vehicle,
               double dt) ;
     void Reset();
 
     void current_commands(const double time, ControlCommand &command);
     VehicleState current_pose();
     /// SetCurrentPoseFromCarModel doesn't appear to be used anywhere.
-    void SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar<Vehicle> > vehicle, int world_id);
+    void SetCurrentPoseFromCarModel(std::shared_ptr<carplanner::NinjaCar > vehicle, int world_id);
     void SetCurrentPose(VehicleState pose, CommandList* command_list = NULL);
     void GetCurrentCommands(const double time,
                             ControlCommand& command,
@@ -60,7 +60,7 @@ private:
 
     int last_current_plan_index_;
     VehicleState current_state_;
-    std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle_;
+    std::shared_ptr<carplanner::NinjaCar> vehicle_;
     LocalPlanner* planner_;
     ControlCommand last_command_;
 

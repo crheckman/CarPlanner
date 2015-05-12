@@ -82,7 +82,7 @@ void VehicleParameters::PrintAllParams(const std::map<int, double> &map)
 ////////////////////////////////////////////////////////////////
 RegressionParameter::RegressionParameter(std::map<int, double>& map,
                                          int nKey,
-                                         std::shared_ptr<carplanner::NinjaCar<BulletCarModel>> vehicle/* = NULL*/):
+                                         std::shared_ptr<carplanner::BulletCarModel> vehicle/* = NULL*/):
     val_(map[nKey]),
     key_(nKey),
     name_(VehicleParameters::Names[nKey]),

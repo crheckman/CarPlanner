@@ -48,13 +48,10 @@
 
 namespace carplanner {
 
-class BulletCarModel : public NinjaImpl<BulletCarModel>
+class BulletCarModel : public NinjaCar
 {
-  typedef NinjaImpl<BulletCarModel> Base;
 
 public:
-
-  using Base::Base;
 
   static btVector3 GetUpVector(int upAxis,btScalar regularValue,btScalar upValue);
   /////////////////////////////////////////////////////////////////////////////////////////

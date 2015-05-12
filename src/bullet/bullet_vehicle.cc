@@ -10,7 +10,7 @@
 #include <CarPlanner/utils/vector.h>
 #include <CarPlanner/bullet/bullet_world_instance.h>
 
-typedef carplanner::NinjaCar<BulletCarModel> BulletCarModel;
+typedef carplanner::BulletCarModel BulletCarModel;
 
 BulletCarModel::BulletCarModel()
 {

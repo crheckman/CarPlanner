@@ -1,8 +1,11 @@
 #pragma once
-#include <CarPlanner/ninjacar.h>
+
+#include <CarPlanner/utils/vector.h>
 
 class VehicleState
 {
+
+public:
   VehicleState()
   {
     t_wv_ = Sophus::SE3d();
@@ -24,6 +27,7 @@ class VehicleState
     steering_cmd_ = 0;
   }
 
+protected:
   static VehicleState GetInterpolatedState(const std::vector<VehicleState>& vStates,
                                            const int start_index,
                                            const double& time,

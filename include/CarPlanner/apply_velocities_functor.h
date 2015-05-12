@@ -22,7 +22,7 @@
 #define PITCH_TORQUE_CONTROL_ENABLED 1
 #define YAW_TORQUE_CONTROL_ENABLED 0
 
-
+namespace carplanner {
 ///////////////////////////////////////////////////////////////////////////////
 struct ControlSample
 {
@@ -188,7 +188,7 @@ public:
 class ApplyVelocitesFunctor5d
 {
 public:
-    ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle,
+    ApplyVelocitesFunctor5d(std::shared_ptr<carplanner::NinjaCar> vehicle,
                             Eigen::Vector3d init_torques,
                             CommandList* previous_commands = NULL);
 
@@ -212,16 +212,17 @@ public:
     double steering_compensation(VehicleState& state, double phi, double curvature, int nIndex);
     double friction_compensation(int nIndex, double dt);
 
-    std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle(){ return vehicle_; }
-    const std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle() const{ return vehicle_; }
+    std::shared_ptr<carplanner::NinjaCar> vehicle(){ return vehicle_; }
+    const std::shared_ptr<carplanner::NinjaCar> vehicle() const{ return vehicle_; }
     CommandList& previous_command() { return previous_commands_; }
     void set_previous_commands(const CommandList& list) { previous_commands_ = list;}
     void reset_previous_commands() { return previous_commands_.clear(); }
     bool set_no_delay(bool no_delay){ return (no_delay_ = no_delay); }
 private:
-    std::shared_ptr<carplanner::NinjaCar<Vehicle>> vehicle_;
+    std::shared_ptr<carplanner::NinjaCar> vehicle_;
     Eigen::Vector3d init_torques_;
     CommandList previous_commands_;
     bool no_delay_;
 };
 
+}

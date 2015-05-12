@@ -22,8 +22,8 @@ double BezierBoundarySolver::GetCurvature(const boundary_problem *pProblem,
 
     //go through the distance array to find where we are
     int index = 0;
-    for(size_t ii = 0 ; ii < bezierProblem->m_vDistances.size() ; ii++){
-        if(bezierProblem->m_vDistances[ii] > dist){
+    for(size_t ii = 0 ; ii < bezierProblem->distances_.size() ; ii++){
+        if(bezierProblem->distances_[ii] > dist){
             break;
         }else{
             index = ii;
@@ -32,8 +32,8 @@ double BezierBoundarySolver::GetCurvature(const boundary_problem *pProblem,
 
     //now interpolate the curvatures
     double curvature = 0;
-    if(index+1 < (int)bezierProblem->m_vDistances.size()){
-        double ratio = (dist - bezierProblem->m_vDistances[index])/(bezierProblem->m_vDistances[index+1]-bezierProblem->m_vDistances[index]);
+    if(index+1 < (int)bezierProblem->distances_.size()){
+        double ratio = (dist - bezierProblem->distances_[index])/(bezierProblem->distances_[index+1]-bezierProblem->distances_[index]);
         curvature = ratio*bezierProblem->m_vCurvatures[index+1] + (1-ratio)*bezierProblem->m_vCurvatures[index];
     }else{
         curvature = bezierProblem->m_vCurvatures[index];
@@ -56,8 +56,8 @@ void BezierBoundarySolver::_Get5thOrderBezier(BezierBoundaryProblem *pProblem,
 
     //create the handle x and y arrays
 
-    pProblem->m_xVals = Eigen::VectorXd(n+1);
-    pProblem->m_yVals = Eigen::VectorXd(n+1);
+    pProblem->x_vals_ = Eigen::VectorXd(n+1);
+    pProblem->y_vals_ = Eigen::VectorXd(n+1);
 
     const double kInit = pProblem->start_pose_[3] / pProblem->aggressiveness_;
     const double tGoal = pProblem->m_goal_pose_[2];
@@ -73,33 +73,33 @@ void BezierBoundarySolver::_Get5thOrderBezier(BezierBoundaryProblem *pProblem,
              st, ct;
 
     //set the starting point
-    pProblem->m_xVals[0] = pProblem->m_yVals[0] = 0;
+    pProblem->x_vals_[0] = pProblem->y_vals_[0] = 0;
 
     //offset the second point knowing that tInit = 0
-    pProblem->m_xVals[1] = a1;
-    pProblem->m_yVals[1] = 0;
+    pProblem->x_vals_[1] = a1;
+    pProblem->y_vals_[1] = 0;
 
     //offset the third point using the initial curvature
     double h = kInit*powi(a1,2)*(n/(n+1));
-    pProblem->m_xVals[2] = pProblem->m_xVals[1] + b1;
-    pProblem->m_yVals[2] = pProblem->m_yVals[1] + h;
+    pProblem->x_vals_[2] = pProblem->x_vals_[1] + b1;
+    pProblem->y_vals_[2] = pProblem->y_vals_[1] + h;
 
     //and now set the end points
-    pProblem->m_xVals[5] = pProblem->m_goal_pose_[0];
-    pProblem->m_yVals[5] = pProblem->m_goal_pose_[1];
+    pProblem->x_vals_[5] = pProblem->m_goal_pose_[0];
+    pProblem->y_vals_[5] = pProblem->m_goal_pose_[1];
 
     //calculate the offset
     Eigen::Vector2d offset(-a2,0);
     offset = Rgoal * offset;
-    pProblem->m_xVals[4] = pProblem->m_xVals[5] + offset[0];
-    pProblem->m_yVals[4] = pProblem->m_yVals[5] + offset[1];
+    pProblem->x_vals_[4] = pProblem->x_vals_[5] + offset[0];
+    pProblem->y_vals_[4] = pProblem->y_vals_[5] + offset[1];
 
     //calculate the final point using last curvature
     h = kGoal*powi(a2,2)*(n/(n+1.0));
     offset << -b2, -h;
     offset = Rgoal * offset;
-    pProblem->m_xVals[3] = pProblem->m_xVals[4] + offset[0];
-    pProblem->m_yVals[3] = pProblem->m_yVals[4] + offset[1];
+    pProblem->x_vals_[3] = pProblem->x_vals_[4] + offset[0];
+    pProblem->y_vals_[3] = pProblem->y_vals_[4] + offset[1];
 
 }
 
@@ -191,37 +191,37 @@ void BezierBoundarySolver::_Sample5thOrderBezier(BezierBoundaryProblem* pProblem
     double dt = 1.0/pProblem->m_nDiscretization;
 
     pProblem->m_vCurvatures.clear();
-    pProblem->m_vDistances.clear();
+    pProblem->distances_.clear();
     pProblem->m_vPts.clear();
 
     pProblem->m_vCurvatures.reserve(pProblem->m_nDiscretization+1);
-    pProblem->m_vDistances.reserve(pProblem->m_nDiscretization+1);
+    pProblem->distances_.reserve(pProblem->m_nDiscretization+1);
     pProblem->m_vPts.reserve(pProblem->m_nDiscretization+1);
     pProblem->m_dDistance = 0;
 
-    Eigen::Vector2d lastPt(pProblem->m_xVals[0],pProblem->m_yVals[0]);
+    Eigen::Vector2d lastPt(pProblem->x_vals_[0],pProblem->y_vals_[0]);
     double t = 0;
 
     for(int ii = 0 ; ii <= pProblem->m_nDiscretization ; ii++) {
         _GetCoefs(coefs,dCoefs,ddCoefs,t);
 
         //calculate the x and y position of the curve at this t
-        pProblem->m_vPts.push_back(Eigen::Vector2d(coefs.transpose()*pProblem->m_xVals, coefs.transpose()*pProblem->m_yVals));
+        pProblem->m_vPts.push_back(Eigen::Vector2d(coefs.transpose()*pProblem->x_vals_, coefs.transpose()*pProblem->y_vals_));
         pProblem->m_dDistance += (lastPt - pProblem->m_vPts.back()).norm();
         lastPt = pProblem->m_vPts.back();
 
         //calculate the derivatives of x and y
-        double dX = dCoefs.transpose()*pProblem->m_xVals;
-        double ddX = ddCoefs.transpose()*pProblem->m_xVals;
+        double dX = dCoefs.transpose()*pProblem->x_vals_;
+        double ddX = ddCoefs.transpose()*pProblem->x_vals_;
 
-        double dY = dCoefs.transpose()*pProblem->m_yVals;
-        double ddY = ddCoefs.transpose()*pProblem->m_yVals;
+        double dY = dCoefs.transpose()*pProblem->y_vals_;
+        double ddY = ddCoefs.transpose()*pProblem->y_vals_;
 
         //and now calculate the curvature
         double sq = sqrt(powi(dX*dX + dY*dY,3));  //(dX^2+dY^2)^(3/2)
         double curvature = (dX*ddY-dY*ddX)/sq;
         pProblem->m_vCurvatures.push_back(curvature*pProblem->aggressiveness_);  //k = (dX*ddY - dY*ddX)/((dX^2 + dY^2)^(3/2))
-        pProblem->m_vDistances.push_back(pProblem->m_dDistance);
+        pProblem->distances_.push_back(pProblem->m_dDistance);
 
         t += dt;
     }
