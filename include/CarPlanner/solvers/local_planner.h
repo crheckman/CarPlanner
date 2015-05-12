@@ -65,7 +65,7 @@ typedef std::vector<AccelerationProfileNode > AccelerationProfile;
 struct LocalProblemSolution
 {
     LocalProblemSolution() {}
-    LocalProblemSolution(const MotionSample& sample,
+    LocalProblemSolution(const carplanner::MotionSample& sample,
                          const Eigen::Vector5d& optimization_params,
                          const double min_trajectory_time,
                          const double norm):
@@ -78,7 +78,7 @@ struct LocalProblemSolution
     }
     //BezierBoundaryProblem m_Solution;
     Eigen::Vector5d optimization_params_;
-    MotionSample sample_;
+    carplanner::MotionSample sample_;
     double min_trajectory_time_;
     double norm_;
 };
@@ -106,7 +106,11 @@ struct LocalProblem
         Reset();
     }
 
-    LocalProblem(ApplyVelocitesFunctor5d* m_pf, const VehicleState& startState, const VehicleState& goalState, const double& dt) :segment_time_(-1), start_time_(-1.0),
+    LocalProblem(carplanner::ApplyVelocitesFunctor5d* m_pf,
+                 const VehicleState& startState,
+                 const VehicleState& goalState,
+                 const double& dt)
+      : segment_time_(-1), start_time_(-1.0),
         timestep_(dt),functor_(m_pf)
     {
         Reset();
@@ -139,7 +143,7 @@ struct LocalProblem
     Eigen::Vector6d transformed_goal_;
     double timestep_;                                //< The dt used in the functor to push the simulation forward
 
-    ApplyVelocitesFunctor5d* functor_;        //< The functor which is responsible for simulating the car dynamics
+    carplanner::ApplyVelocitesFunctor5d* functor_;        //< The functor which is responsible for simulating the car dynamics
 
     //optimization related properties
     BezierBoundaryProblem boundary_problem_;           //< The boundary problem structure, describing the 2D boundary problem
@@ -150,7 +154,7 @@ struct LocalProblem
     PlannerError planner_error_;
 
     LocalProblemCostMode cost_mode_;
-    MotionSample trajectory_sample_;
+    carplanner::MotionSample trajectory_sample_;
     Eigen::Vector6dAlignedVec transformed_trajectory_;
     //double min_trajectory_time_;
 
@@ -197,7 +201,7 @@ public:
                     Eigen::Vector3dAlignedVec &samples,
                     bool best_solution = false);
     /// Given the local problem struct, will simulate the vehicle physics and produce a motion sample
-    Eigen::Vector6d SimulateTrajectory(MotionSample& sample,     //< The motion sample which will be filled by the function
+    Eigen::Vector6d SimulateTrajectory(carplanner::MotionSample& sample,     //< The motion sample which will be filled by the function
                                        LocalProblem& problem,    //< The Local Problem structure which will define the trajectory
                                        const int nIndex = 0,      //< The index of the world to run the simulation in (this is to do with the thread)
                                        const bool &best_solution = false);
@@ -205,10 +209,10 @@ public:
     void SampleAcceleration(std::vector<ControlCommand>& command_vector,
                             LocalProblem &problem) const;
     void CalculateTorqueCoefficients(LocalProblem &problem,
-                                     MotionSample *motion_sample);
+                                     carplanner::MotionSample *motion_sample);
     /// Calculates the error for the current trajectory. The error is parametrized as [x,y,t,v]
     Eigen::VectorXd _CalculateSampleError(LocalProblem& problem, double& min_traj_time) const { return _CalculateSampleError(problem.current_solution_.sample_,problem,min_traj_time); }
-    Eigen::VectorXd _CalculateSampleError(const MotionSample &sample, LocalProblem &problem, double &min_traj_time) const;
+    Eigen::VectorXd _CalculateSampleError(const carplanner::MotionSample &sample, LocalProblem &problem, double &min_traj_time) const;
     Eigen::VectorXd _GetWeightVector(const LocalProblem& problem);
     double _CalculateErrorNorm(const LocalProblem &problem, const Eigen::VectorXd& dError);
     static int GetNumWorldsRequired(const int num_optimization_params) { return num_optimization_params*2+2;}
@@ -228,7 +232,7 @@ private:
     /// Transforms the goal pose so that it is on the 2D manifold specified by the problem struct
     Eigen::Vector6d _TransformGoalPose(const Eigen::Vector6d &goal_pose, const LocalProblem& problem) const;
     /// Returns the trajectory error given the trajectory and a transformed trajectory and end pose
-    Eigen::VectorXd _GetTrajectoryError(const MotionSample& sample, const Eigen::Vector6dAlignedVec& transformed_poses, const Eigen::Vector6d& end_pose, double &min_time) const;
+    Eigen::VectorXd _GetTrajectoryError(const carplanner::MotionSample& sample, const Eigen::Vector6dAlignedVec& transformed_poses, const Eigen::Vector6d& end_pose, double &min_time) const;
     /// Transforms a vehicle state so that it is on the 2D manifold specified by the problem struct
     Eigen::Vector6d _Transform3dGoalPose(const VehicleState& state, const LocalProblem &problem) const;
 

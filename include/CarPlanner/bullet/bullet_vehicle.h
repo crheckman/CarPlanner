@@ -16,7 +16,6 @@
 #include <BulletDynamics/ConstraintSolver/btSliderConstraint.h>
 
 #include <CarPlanner/ninjacar.h>
-#include <CarPlanner/ninjacar_impl.h>
 
 #include <CarPlanner/bullet/bullet_vehicle_parameters.h>
 #include <CarPlanner/bullet/bullet_vehicle_state.h>
@@ -71,12 +70,12 @@ public:
                    const bool bNoDelay = false,
                    const bool bNoUpdate  = false );
   /////////////////////////////////////////////////////////////////////////////////////////
-  virtual void GetVehicleState(int worldId, VehicleState &stateOut);
+  virtual void GetVehicleState(int worldId, VehicleState& stateOut);
   //virtual VehicleState VehicleStateAsync(int worldId);
   Eigen::Vector3d GetVehicleLinearVelocity(int worldId);
   Eigen::Vector3d GetVehicleAngularVelocity(int worldId);
   Eigen::Vector3d GetVehicleInertiaTensor(int worldId);
-  virtual void SetState(int world_id,  const VehicleState& state );
+  virtual void SetVehicleState(int world_id, const VehicleState& state );
   //virtual void SetState( int worldId,  const Eigen::Matrix4d& vState  );
   virtual void SetStateNoReset(BulletWorldInstance *pWorld, const Sophus::SE3d &Twv );
   BulletWorldInstance *GetWorldInstance(int id){ return m_vWorlds[id]; }

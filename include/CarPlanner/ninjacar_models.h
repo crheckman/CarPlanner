@@ -4,9 +4,9 @@
  *
  */
 
-#include <CarPlanner/regression_parameter.h>
+#include <CarPlanner/ninjacar.h>
 #include <CarPlanner/vehicle_state.h>
 #include <CarPlanner/control_command.h>
 
-#include <CarPlanner/bullet/bullet_car_model.h>
+#include <CarPlanner/bullet/bullet_vehicle.h>
 

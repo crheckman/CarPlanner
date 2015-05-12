@@ -1,6 +1,7 @@
-#include <CarPlanner/vehicle_parameters.h>
 #include <CarPlanner/ninjacar.h>
+#include <CarPlanner/vehicle_parameters.h>
 
+namespace carplanner {
 ////////////////////////////////////////////////////////////////
 const char * const VehicleParameters::Names[] = {"WheelBase", "Width", "Height", "DynamicFrictionCoef",
                                              "StaticSideFrictionCoef", "SlipCoefficient", "ControlDelay",
@@ -14,7 +15,7 @@ const char * const VehicleParameters::Names[] = {"WheelBase", "Width", "Height",
 ////////////////////////////////////////////////////////////////
 bool VehicleParameters::SaveToFile(const std::string sFile, const std::map<int, double> &map)
 {
-    dout("Writing parameter map to " << sFile << "-----------------");
+    DLOG(INFO) << "Writing parameter map to " << sFile << "-----------------";
     std::ofstream file;
     file.open(sFile);
     for(const std::pair<int,double>& pair: map ){
@@ -29,7 +30,7 @@ bool VehicleParameters::SaveToFile(const std::string sFile, const std::map<int, 
 ////////////////////////////////////////////////////////////////
 bool VehicleParameters::LoadFromFile(const std::string sFile, std::map<int, double>& map)
 {
-    dout("Reading parameter map from " << sFile << "-----------------");
+    DLOG(INFO) << "Reading parameter map from " << sFile << "-----------------";
     std::ifstream file;
     //open the file for read
     file.open(sFile.c_str());
@@ -52,17 +53,17 @@ bool VehicleParameters::LoadFromFile(const std::string sFile, std::map<int, doub
                     bFound = true;
                     double val = std::stod(vals[1]);
                     map[ii] = val;
-                    dout("Loading parameter " << Names[ii] << " with value " << val);
+                    DLOG(INFO) << "Loading parameter " << Names[ii] << " with value " << val;
                     break;
                 }
             }
 
             if(bFound == false){
-                dout("ERROR - parameter " << vals[0] << " not recognized.");
+                DLOG(INFO) << "ERROR - parameter " << vals[0] << " not recognized.";
                 return false;
             }
         }else{
-            dout("ERROR - line with less than 2 comma delimited items found when parsing parameters.");
+            DLOG(INFO) << "ERROR - line with less than 2 comma delimited items found when parsing parameters.";
             return false;
         }
     }
@@ -70,23 +71,26 @@ bool VehicleParameters::LoadFromFile(const std::string sFile, std::map<int, doub
     return true;
 }
 
+
 ////////////////////////////////////////////////////////////////
 void VehicleParameters::PrintAllParams(const std::map<int, double> &map)
 {
-    dout("Printing parameter map -----------------");
+    DLOG(INFO) << "Printing parameter map -----------------";
     for(const std::pair<int, double>& pair: map ){
-        dout(Names[pair.first] << ":" << pair.second);
+        DLOG(INFO) << Names[pair.first] << ":" << pair.second;
     }
 }
+
+} //namespace carplanner
 
 ////////////////////////////////////////////////////////////////
 RegressionParameter::RegressionParameter(std::map<int, double>& map,
                                          int nKey,
-                                         std::shared_ptr<carplanner::BulletCarModel> vehicle/* = NULL*/):
+                                         std::shared_ptr<carplanner::NinjaCar> vehicle):
     val_(map[nKey]),
     key_(nKey),
-    name_(VehicleParameters::Names[nKey]),
-    vehicle_(vehicle){}
+    name_(carplanner::VehicleParameters::Names[nKey]),
+    vehicle_(vehicle) {}
 
 ////////////////////////////////////////////////////////////////
 bool RegressionParameter::AreEqual(const std::vector<RegressionParameter>& params1, const std::vector<RegressionParameter>& params2)
@@ -106,3 +110,4 @@ void RegressionParameter::UpdateValue(const double newVal)
     std::vector<RegressionParameter> params = {*this};
     vehicle_->UpdateParameters(params);
 }
+

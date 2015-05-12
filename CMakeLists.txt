@@ -24,6 +24,7 @@ ENDIF()
 # the boost libraries that we need
 #set( BOOST_LIBS thread date_time system timer )
 
+find_package( GLog REQUIRED)
 find_package( Eigen3 REQUIRED )
 FIND_PACKAGE( Pangolin REQUIRED )
 find_package( SceneGraph REQUIRED )
@@ -33,7 +34,7 @@ find_package( Bullet REQUIRED )
 #find_package( Boost COMPONENTS ${BOOST_LIBS} REQUIRED )
 find_package( Sophus REQUIRED )
 
-set( _LIBRARIES  ${BULLET_LIBRARIES}  ${BOOST_LIBRARIES} ${Sophus_LIBRARIES} ${VRPN_SERVER_LIBRARY}) # ${MVL_LIBRARIES})
+set( _LIBRARIES  ${BULLET_LIBRARIES}  ${BOOST_LIBRARIES} ${Sophus_LIBRARIES} ${VRPN_SERVER_LIBRARY} ${GLOG_LIBRARIES}) # ${MVL_LIBRARIES})
 set( _INCLUDE_DIRS
         ${CMAKE_BINARY_DIR}
         ${Sophus_INCLUDE_DIRS}
@@ -43,12 +44,12 @@ set( _INCLUDE_DIRS
         ${BULLET_INCLUDE_DIR}
         ${SceneGraph_INCLUDE_DIRS}
         ${Pangolin_INCLUDE_DIRS}
+        ${GLOG_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         )
 
 include_directories( ${_INCLUDE_DIRS} )
-
 
 include_directories( ${CAR_PLANNER_INCLUDE_DIRS} )
 
@@ -72,7 +73,6 @@ set( HDRS
         include/CarPlanner/car_controller.h
         include/CarPlanner/control_command.h
         include/CarPlanner/ninjacar.h
-        include/CarPlanner/ninjacar_impl.h
         include/CarPlanner/ninjacar_models.h
         include/CarPlanner/rigid_body.h
         include/CarPlanner/vehicle_parameters.h

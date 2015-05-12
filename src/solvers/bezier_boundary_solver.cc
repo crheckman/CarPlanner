@@ -18,12 +18,12 @@ BezierBoundarySolver::BezierBoundarySolver()
 double BezierBoundarySolver::GetCurvature(const boundary_problem *pProblem,
                                           double dist)
 {
-    BezierBoundaryProblem* bezierProblem = (BezierBoundaryProblem*)pProblem;
+    BezierBoundaryProblem* bezer_problem = (BezierBoundaryProblem*)pProblem;
 
     //go through the distance array to find where we are
     int index = 0;
-    for(size_t ii = 0 ; ii < bezierProblem->distances_.size() ; ii++){
-        if(bezierProblem->distances_[ii] > dist){
+    for(size_t ii = 0 ; ii < bezer_problem->distances_.size() ; ii++){
+        if(bezer_problem->distances_[ii] > dist){
             break;
         }else{
             index = ii;
@@ -32,11 +32,11 @@ double BezierBoundarySolver::GetCurvature(const boundary_problem *pProblem,
 
     //now interpolate the curvatures
     double curvature = 0;
-    if(index+1 < (int)bezierProblem->distances_.size()){
-        double ratio = (dist - bezierProblem->distances_[index])/(bezierProblem->distances_[index+1]-bezierProblem->distances_[index]);
-        curvature = ratio*bezierProblem->m_vCurvatures[index+1] + (1-ratio)*bezierProblem->m_vCurvatures[index];
+    if(index+1 < (int)bezer_problem->distances_.size()){
+        double ratio = (dist - bezer_problem->distances_[index])/(bezer_problem->distances_[index+1]-bezer_problem->distances_[index]);
+        curvature = ratio*bezer_problem->m_vCurvatures[index+1] + (1-ratio)*bezer_problem->m_vCurvatures[index];
     }else{
-        curvature = bezierProblem->m_vCurvatures[index];
+        curvature = bezer_problem->m_vCurvatures[index];
     }
     return curvature;
 }
@@ -107,34 +107,34 @@ void BezierBoundarySolver::_Get5thOrderBezier(BezierBoundaryProblem *pProblem,
 void BezierBoundarySolver::Solve(boundary_problem *pProblem)
 {
     //double time = Tic();
-    BezierBoundaryProblem* bezierProblem = (BezierBoundaryProblem*)pProblem;
+    BezierBoundaryProblem* bezer_problem = (BezierBoundaryProblem*)pProblem;
 
     //find the distance between the start and finish
     double dist = sqrt(powi(pProblem->m_goal_pose_[0],2) + powi(pProblem->m_goal_pose_[1],2));
-    bezierProblem->m_dSegLength = dist/g_nAggressivenessDivisor;
+    bezer_problem->segment_length_ = dist/g_nAggressivenessDivisor;
     //first get the guess bezier
-    if(bezierProblem->m_bSolved == false){
+    if(bezer_problem->solved_ == false){
 
     }
 
-    bezierProblem->m_dSegLength = std::max(1e-2,std::min(bezierProblem->m_dSegLength,dist/2));
+    bezer_problem->segment_length_ = std::max(1e-2,std::min(bezer_problem->segment_length_,dist/2));
 
-    bezierProblem->m_dParams = Eigen::Vector4d(bezierProblem->m_dSegLength,bezierProblem->m_dSegLength,bezierProblem->m_dSegLength,bezierProblem->m_dSegLength);
-    _Get5thOrderBezier(bezierProblem,bezierProblem->m_dParams);
+    bezer_problem->m_dParams = Eigen::Vector4d(bezer_problem->segment_length_,bezer_problem->segment_length_,bezer_problem->segment_length_,bezer_problem->segment_length_);
+    _Get5thOrderBezier(bezer_problem,bezer_problem->m_dParams);
 
     //and now sample it
-    _Sample5thOrderBezier(bezierProblem);
+    _Sample5thOrderBezier(bezer_problem);
 
     //now iterate to reduce curvature
-    if(bezierProblem->m_bSolved == false){
-        //_IterateCurvatureReduction(bezierProblem,bezierProblem->m_dParams);
-        //_IterateCurvatureReduction(bezierProblem,bezierProblem->m_dParams);
+    if(bezer_problem->solved_ == false){
+        //_IterateCurvatureReduction(bezer_problem,bezer_problem->m_dParams);
+        //_IterateCurvatureReduction(bezer_problem,bezer_problem->m_dParams);
     }
 
     //indicate that the problem has been solved
-    bezierProblem->m_bSolved = true;
+    bezer_problem->solved_ = true;
 
-    //dout("2D solve with goal " << bezierProblem->m_goal_pose_.transpose() <<" took " << Toc(time) << " seconds.");
+    //dout("2D solve with goal " << bezer_problem->m_goal_pose_.transpose() <<" took " << Toc(time) << " seconds.");
 }
 
 ///////////////////////////////////////////////////////////////////////////////

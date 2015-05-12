@@ -128,6 +128,9 @@ protected:
     return pose_out_;
   }
 
+  /// Made public so we don't need to write set/get functions until we die.
+public:
+
   Sophus::SE3d t_wv_;                     //< 4x4 matrix denoting the state of the car
   std::vector<Sophus::SE3d> wheel_states_;   //< 4x4 matrices which denote the pose of each wheel
   std::vector<bool> wheel_omegas_;         //< Angular velocity of the vehicle in world coordinates

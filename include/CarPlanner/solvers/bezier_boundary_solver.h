@@ -15,7 +15,7 @@ struct BezierBoundaryProblem : boundary_problem
     std::vector<double> distances_;      //< Output: The distances alone
     Eigen::VectorXd x_vals_;            //< The x values of the control handles for the bezier curve
     Eigen::VectorXd y_vals_;            //< The y values of the control handles for the bezier curve
-    Eigen::Vector4d solved_goal_pose_;  //< if m_bSolved is true, this vector contains the goal pose for which the bezier was solved
+    Eigen::Vector4d solved_goal_pose_;  //< if solved_ is true, this vector contains the goal pose for which the bezier was solved
     Eigen::Vector4d params_;          //< The parameters that define how the control points relate
     bool solved_;                     //< Boolean value indicating whether or not the problem has already been solved.
     double          aggressiveness_;

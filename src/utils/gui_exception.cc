@@ -5,19 +5,19 @@
  *      Author: nima
  */
 
-#include "CarPlanner/MochaException.h"
+#include <CarPlanner/utils/gui_exception.h>
 
 
 
-MochaException::MochaException(const char *what): m_pWhat(what) {
+GuiException::GuiException(const char *what): m_pWhat(what) {
 }
 
-MochaException::~MochaException() throw()
+GuiException::~GuiException() throw()
 {
 
 }
 
-const char* MochaException::what()
+const char* GuiException::what()
 {
 	return m_pWhat;
 }

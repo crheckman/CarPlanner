@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <glog/logging.h>
 
 #include <CarPlanner/utils/vector.h>
 #include <CarPlanner/control_command.h>
@@ -12,6 +13,15 @@ namespace carplanner {
  *
  */
 
+/// Structure containing all parameters for a car
+struct VehicleParameters
+{
+  static const char * const Names[];
+  static bool LoadFromFile(const std::string sFile, std::map<int, double> &map);
+  static void PrintAllParams(const std::map<int, double> &map);
+  static bool SaveToFile(const std::string sFile, const std::map<int, double> &map);
+};
+
 class NinjaCar {
 protected:
   typedef Eigen::Matrix<double,2,1> Vec2d;
@@ -20,6 +30,10 @@ protected:
 
 public:
   NinjaCar() {}
+  NinjaCar(const NinjaCar& other) :
+    name_(other.name_), type_(other.type_),
+    state_(other.state_), params_(other.params_) {}
+
   virtual ~NinjaCar() {}
 
   /* Now define the available methods for CarPlanner in pure virtual */
@@ -31,13 +45,9 @@ public:
   /* Provide get/set methods for member variables we want to be public. */
 
   /// Get/Set for State.
-  virtual void SetState( const VehicleState& state ) {
-    state_ = state;
-  }
+  virtual void SetVehicleState( const int world_id, const VehicleState& state ) = 0;
 
-  virtual VehicleState GetState() const {
-    return state_;
-  }
+  virtual VehicleState GetVehicleState( const int world_id, const VehicleState& state_out ) const = 0;
 
   /// Get for Vehicle.
   /// Will simply return a string based on which we're using.
@@ -52,6 +62,8 @@ public:
     return name_;
   }
 
+  virtual void UpdateParameters( VehicleParameters& params ) = 0;
+
 protected:
   /// This constructor isn't needed yet.
 /*  NinjaCar( const VehicleParameters& params_in,
@@ -63,6 +75,7 @@ protected:
   std::string name_;
   std::string type_;
   VehicleState state_;
+  VehicleParameters params_;
 
 };
 
