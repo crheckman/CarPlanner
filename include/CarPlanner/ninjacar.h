@@ -2,6 +2,7 @@
 #include <memory>
 #include <glog/logging.h>
 
+#include <assimp/scene.h>
 #include <CarPlanner/utils/vector.h>
 #include <CarPlanner/control_command.h>
 #include <CarPlanner/vehicle_state.h>
@@ -64,6 +65,18 @@ public:
 
   virtual void UpdateParameters( VehicleParameters& params ) = 0;
 
+  virtual void GenerateStaticHull(const struct aiScene *pAIScene,
+                                  const struct aiNode *pAINode,
+                                  const aiMatrix4x4 parentTransform,
+                                  const float flScale,
+                                  btTriangleMesh &triangleMesh, //crh
+                                  Eigen::Vector3d& dMin,
+                                  Eigen::Vector3d& dMax) = 0;
+
+  std::pair<double, double> GetSteeringRequiredAndMaxForce(const int world_id,
+                                                           const int nWheelId,
+                                                           const double dPhi,
+                                                           const double dt);
 protected:
   /// This constructor isn't needed yet.
 /*  NinjaCar( const VehicleParameters& params_in,

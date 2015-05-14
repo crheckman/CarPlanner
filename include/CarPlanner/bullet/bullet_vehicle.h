@@ -6,7 +6,6 @@
  */
 
 #pragma once
-#include <assimp/scene.h>
 
 #include <sophus/se3.hpp>
 
@@ -52,15 +51,7 @@ class BulletCarModel : public NinjaCar
 
 public:
 
-  static btVector3 GetUpVector(int upAxis,btScalar regularValue,btScalar upValue);
-  /////////////////////////////////////////////////////////////////////////////////////////
-  static void GenerateStaticHull(const struct aiScene *pAIScene, const struct aiNode *pAINode, const aiMatrix4x4 parentTransform, const float flScale, btTriangleMesh &triangleMesh , btVector3& dMin, btVector3& dMax);
-  void Init(btCollisionShape *pCollisionShape, const btVector3 &dMin, const btVector3 &dMax, std::map<int, double> &parameters, unsigned int numWorlds );
-  void Init(const struct aiScene *pAIScene,std::map<int, double>& parameters, unsigned int numWorlds );
-  void DebugDrawWorld(int worldId);
-
-  std::pair<double, double> GetSteeringRequiredAndMaxForce(const int world_id, const int nWheelId, const double dPhi, const double dt);
-  double GetTotalGravityForce(BulletWorldInstance* pWorld);
+ /////////////////////////////////////////////////////////////////////////////////////////
   double GetTotalWheelFriction(int worldId, double dt);
   double _CalculateWheelFriction(int wheelNum, BulletWorldInstance* pInstance, double dt);
   /////////////////////////////////////////////////////////////////////////////////////////
